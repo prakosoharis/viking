@@ -240,16 +240,24 @@ const Dashboard = ({ user, onLogout }) => {
 
     const debugLogs = [...debugInfo];
     debugLogs.push(`🚀 Starting upload...`);
-    setDebugInfo(debugLogs);
+    debugLogs.push(`User ID: ${user._id}`);
+    debugLogs.push(`Files count: ${selectedFiles.length}`);
+    setDebugInfo([...debugLogs]);
 
     console.log('Starting upload with files:', selectedFiles);
 
     try {
-      const result = await api.uploadImages(user._id, selectedFiles);
+      debugLogs.push(`📡 Calling API uploadImages...`);
+      setDebugInfo([...debugLogs]);
+
+      const result = await api.uploadImages(user._id, selectedFiles, (msg) => {
+        debugLogs.push(msg);
+        setDebugInfo([...debugLogs]);
+      });
       console.log('Upload success:', result);
 
       debugLogs.push(`✅ Upload successful! ${result.count} files uploaded`);
-      setDebugInfo(debugLogs);
+      setDebugInfo([...debugLogs]);
 
       setUploadCount(result.count);
       setShowModal(true);
@@ -260,11 +268,16 @@ const Dashboard = ({ user, onLogout }) => {
     } catch (error) {
       console.error('Upload failed - Full error:', error);
       console.error('Error message:', error.message);
-      console.error('Error response:', error.response);
+      console.error('Error name:', error.name);
+      console.error('Error stack:', error.stack);
 
       debugLogs.push(`❌ ERROR: ${error.message}`);
-      debugLogs.push(`Error stack: ${error.stack?.substring(0, 200)}`);
-      setDebugInfo(debugLogs);
+      debugLogs.push(`Error name: ${error.name || 'undefined'}`);
+      debugLogs.push(`Error type: ${typeof error}`);
+      if (error.stack) {
+        debugLogs.push(`Stack: ${error.stack.substring(0, 300)}`);
+      }
+      setDebugInfo([...debugLogs]);
 
       alert(`Failed to upload images: ${error.message || 'Please try again'}\n\nCheck debug info below for details.`);
     }

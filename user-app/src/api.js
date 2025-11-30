@@ -19,71 +19,72 @@ class ApiService {
   }
 
   // Upload endpoints
-  async uploadImages(userId, files) {
-    try {
-      console.log('API uploadImages called with:', { userId, fileCount: files.length });
+  async uploadImages(userId, files, onProgress) {
+    const log = (msg) => {
+      console.log(msg);
+      if (onProgress) onProgress(msg);
+    };
 
+    try {
+      log(`📦 Preparing FormData...`);
       const formData = new FormData();
       formData.append('user_id', userId);
 
-      // Convert files to proper format for FormData (iOS camera compatibility)
+      // Add files directly to FormData (simpler approach)
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log(`Processing file ${i}:`, {
-          name: file.name,
-          type: file.type,
-          size: file.size
-        });
+        log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
 
-        // If file has no type (iOS camera issue), try to detect from extension
-        let fileType = file.type;
-        if (!fileType || fileType === '') {
-          const ext = file.name.split('.').pop().toLowerCase();
-          const typeMap = {
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'png': 'image/png',
-            'heic': 'image/heic',
-            'heif': 'image/heif',
-            'webp': 'image/webp'
-          };
-          fileType = typeMap[ext] || 'image/jpeg';
-          console.log(`Empty type detected, using: ${fileType}`);
-        }
-
-        // Create a new Blob with proper type (iOS camera fix)
-        const blob = new Blob([file], { type: fileType });
-
-        // Append as File with proper filename
-        formData.append('images', blob, file.name);
-
-        console.log(`Added file ${i} to FormData as Blob with type: ${fileType}`);
+        // Append file directly without Blob conversion
+        formData.append('images', file, file.name);
       }
 
-      console.log('FormData prepared, sending request to:', `${API_BASE_URL}/uploads`);
+      const apiUrl = `${API_BASE_URL}/uploads`;
+      log(`🌐 Sending to: ${apiUrl}`);
 
-      const response = await fetch(`${API_BASE_URL}/uploads`, {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        log(`⏱️ Request timeout after 60s`);
+        controller.abort();
+      }, 60000); // 60 second timeout
+
+      log(`📨 Making fetch request...`);
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
 
-      console.log('Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
+      log(`📬 Response received: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('Upload failed response:', errorData);
+        log(`❌ Response not OK`);
+        let errorData;
+        try {
+          errorData = await response.json();
+          log(`Error data: ${JSON.stringify(errorData)}`);
+        } catch (e) {
+          errorData = { error: response.statusText };
+          log(`Failed to parse error JSON`);
+        }
         throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
       }
 
+      log(`✅ Parsing success response...`);
       const result = await response.json();
-      console.log('Upload successful:', result);
+      log(`✅ Upload complete: ${result.count} files`);
       return result;
     } catch (error) {
-      console.error('uploadImages error:', error);
+      log(`💥 Exception caught: ${error.name} - ${error.message}`);
+
+      // Better error messages
+      if (error.name === 'AbortError') {
+        throw new Error('Upload timeout - file too large or slow connection');
+      } else if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
+        throw new Error('Network error - check your internet connection');
+      }
+
       throw error;
     }
   }
