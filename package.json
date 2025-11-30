@@ -1,0 +1,23 @@
+{
+  "name": "vikings-invoice-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vikings Invoice System - Monorepo",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:admin": "cd admin-app && npm run dev",
+    "dev:user": "cd user-app && npm run dev",
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:admin\" \"npm:dev:user\" --names \"backend,admin,user\" --prefix-colors \"blue,green,yellow\"",
+    "build:admin": "cd admin-app && npm run build",
+    "build:user": "cd user-app && npm run build",
+    "build:all": "npm run build:admin && npm run build:user",
+    "docker:dev": "docker-compose up -d mongodb && npm run dev:backend",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "install:all": "npm install && cd backend && npm install && cd ../admin-app && npm install && cd ../user-app && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
