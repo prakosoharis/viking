@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -269,12 +269,23 @@ const Dashboard = ({ user, onLogout }) => {
                 : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
             }`}
           >
+            {/* Hidden input for camera */}
             <input
               type="file"
-              id="file-input"
+              id="camera-input"
               multiple
-              accept="image/jpeg,image/jpg,image/png"
+              accept="image/*"
               capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {/* Hidden input for gallery/file picker */}
+            <input
+              type="file"
+              id="gallery-input"
+              multiple
+              accept="image/*"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -284,21 +295,32 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
 
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Drop images here
+              Upload Images
             </h3>
             <p className="text-gray-600 mb-6">
-              or click below to browse
+              Take a photo or choose from gallery
             </p>
 
-            <label
-              htmlFor="file-input"
-              className="inline-block px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold cursor-pointer shadow-lg shadow-blue-200"
-            >
-              Choose Files
-            </label>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <label
+                htmlFor="camera-input"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold cursor-pointer shadow-lg shadow-blue-200"
+              >
+                <Camera className="w-5 h-5" />
+                Take Photo
+              </label>
+
+              <label
+                htmlFor="gallery-input"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-800 transition-all font-semibold cursor-pointer shadow-lg"
+              >
+                <ImageIcon className="w-5 h-5" />
+                Choose Files
+              </label>
+            </div>
 
             <p className="text-sm text-gray-500 mt-4">
-              JPG, JPEG, PNG only
+              All image formats supported (JPG, PNG, HEIC, WebP, etc.)
             </p>
           </div>
 

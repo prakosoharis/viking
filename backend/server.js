@@ -59,18 +59,18 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-  if (allowedTypes.includes(file.mimetype)) {
+  // Accept all image formats (JPEG, PNG, HEIC, HEIF, WebP, AVIF, etc.)
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPG, JPEG, PNG allowed'), false);
+    cb(new Error('Invalid file type. Only image files allowed'), false);
   }
 };
 
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit (untuk HEIC/RAW images)
 });
 
 // ==================== ROUTES ====================
