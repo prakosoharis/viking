@@ -40,21 +40,25 @@ vikings/
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 20+
-- Docker Desktop (untuk MongoDB)
-- PM2 (untuk production server)
+### 📚 **Dokumentasi Setup Lengkap**
 
-### Local Development (3 langkah!)
+Pilih sesuai kebutuhan Anda:
+
+1. **[SETUP-GUIDE.md](./SETUP-GUIDE.md)** - Panduan lengkap step-by-step untuk Local & Server
+2. **[LOCAL-VS-SERVER.md](./LOCAL-VS-SERVER.md)** - Quick reference: perbedaan Local vs Server
+
+---
+
+### 🏠 Local Development (3 langkah!)
 
 ```bash
-# 1. Install semua dependencies
+# 1. Install dependencies
 npm run install:all
 
-# 2. Setup environment variables
-cp backend/.env.example backend/.env
-cp admin-app/.env.example admin-app/.env
-cp user-app/.env.example user-app/.env
+# 2. Setup environment files (LOCAL)
+cp backend/.env.local.example backend/.env
+cp user-app/.env.local.example user-app/.env
+cp admin-app/.env.local.example admin-app/.env
 
 # 3. Start semua services!
 npm run dev
@@ -66,7 +70,45 @@ npm run dev
 - Admin App: http://localhost:3201
 - MongoDB: localhost:27017
 
-**Stop services:** Tekan `Ctrl + C`
+**Stop:** `Ctrl + C` → `docker-compose down`
+
+---
+
+### 🚀 Production Server (5 langkah!)
+
+```bash
+# 1. Clone & chmod
+git clone <repo-url>
+cd vikings
+chmod +x scripts/*.sh
+
+# 2. Setup (auto: install, build, configure)
+./scripts/server-setup.sh
+
+# 3. Setup MongoDB
+./scripts/server-mongodb.sh docker
+
+# 4. Edit environment files (PRODUCTION)
+nano backend/.env
+nano user-app/.env  # Edit VITE_API_URL ke domain
+nano admin-app/.env # Edit VITE_API_URL ke domain
+
+# Update vite.config.js dengan domain Anda
+nano user-app/vite.config.js    # allowedHosts
+nano admin-app/vite.config.js   # allowedHosts
+
+# Rebuild setelah edit
+cd user-app && npm run build && cd ..
+cd admin-app && npm run build && cd ..
+
+# 5. Start PM2 & Setup Nginx
+./scripts/server-start.sh
+# Configure Nginx manually (lihat SETUP-GUIDE.md)
+```
+
+**Aplikasi production ready!** 🚀
+
+⚠️ **PENTING:** Baca **[SETUP-GUIDE.md](./SETUP-GUIDE.md)** untuk detail Nginx configuration dan troubleshooting!
 
 ---
 
