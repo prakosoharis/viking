@@ -169,20 +169,25 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const validateFiles = (files) => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     const validFiles = [];
     const invalidFiles = [];
+    const maxSize = 20 * 1024 * 1024; // 20MB limit
 
     Array.from(files).forEach(file => {
-      if (validTypes.includes(file.type)) {
-        validFiles.push(file);
+      // Accept all image types
+      if (file.type.startsWith('image/')) {
+        if (file.size <= maxSize) {
+          validFiles.push(file);
+        } else {
+          invalidFiles.push(`${file.name} (too large, max 20MB)`);
+        }
       } else {
-        invalidFiles.push(file.name);
+        invalidFiles.push(`${file.name} (not an image)`);
       }
     });
 
     if (invalidFiles.length > 0) {
-      alert(`Invalid files: ${invalidFiles.join(', ')}\n\nOnly JPG, JPEG, PNG allowed`);
+      alert(`Invalid files:\n${invalidFiles.join('\n')}\n\nOnly image files up to 20MB allowed`);
     }
 
     return validFiles;
