@@ -16,29 +16,26 @@ class ApiService {
   getImageUrl(imagePath) {
     if (!imagePath) return '';
 
-    // If already a full URL, return as is
+    // If already a proper full URL, return as is
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
 
-    // Clean base URL (remove /api suffix if exists)
-    let baseUrl = API_BASE_URL.replace('/api', '');
+    // Get base URL and replace /api with /assets
+    // Example: https://api.deluwang.online/api -> https://api.deluwang.online/assets
+    const baseUrl = API_BASE_URL.replace(/\/api$/, '/assets');
 
-    // Ensure base URL has protocol
-    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-      baseUrl = `http://${baseUrl}`;
-    }
-
-    // Clean image path - remove leading dots or domain fragments
+    // Extract clean path from malformed URLs
     let cleanPath = imagePath;
 
-    // Remove malformed domain fragments (e.g., ".deluwang.online/api/assets/...")
+    // Handle malformed URLs like ".deluwang.online/api/assets/xxx.jpg" or "https/.deluwang.online/api/assets/xxx.jpg"
     if (cleanPath.includes('/assets/')) {
+      // Extract only /assets/filename part
       cleanPath = cleanPath.substring(cleanPath.indexOf('/assets/'));
-    }
-
-    // Ensure path starts with /
-    if (!cleanPath.startsWith('/')) {
+      // Remove /assets/ prefix since baseUrl already has it
+      cleanPath = cleanPath.replace('/assets/', '/');
+    } else if (!cleanPath.startsWith('/')) {
+      // If no /assets/ found and doesn't start with /, assume it's just filename
       cleanPath = '/' + cleanPath;
     }
 
