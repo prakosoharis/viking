@@ -153,6 +153,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
+  const [debugInfo, setDebugInfo] = useState([]);
 
   useEffect(() => {
     loadUploads();
@@ -209,10 +210,15 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleFileSelect = (e) => {
     const files = e.target.files;
+    const debugLogs = [];
+
+    debugLogs.push(`📁 Files selected: ${files.length}`);
     console.log('Files selected:', files);
 
     // Log each file details for debugging
     Array.from(files).forEach((file, idx) => {
+      const info = `File ${idx}: ${file.name} | Type: "${file.type}" | Size: ${(file.size/1024).toFixed(1)}KB`;
+      debugLogs.push(info);
       console.log(`File ${idx}:`, {
         name: file.name,
         type: file.type,
@@ -222,18 +228,28 @@ const Dashboard = ({ user, onLogout }) => {
     });
 
     const validatedFiles = validateFiles(files);
+    debugLogs.push(`✅ Validated: ${validatedFiles.length} files`);
     console.log('Validated files:', validatedFiles);
+
+    setDebugInfo(debugLogs);
     setSelectedFiles(validatedFiles);
   };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
+    const debugLogs = [...debugInfo];
+    debugLogs.push(`🚀 Starting upload...`);
+    setDebugInfo(debugLogs);
+
     console.log('Starting upload with files:', selectedFiles);
 
     try {
       const result = await api.uploadImages(user._id, selectedFiles);
       console.log('Upload success:', result);
+
+      debugLogs.push(`✅ Upload successful! ${result.count} files uploaded`);
+      setDebugInfo(debugLogs);
 
       setUploadCount(result.count);
       setShowModal(true);
@@ -245,7 +261,12 @@ const Dashboard = ({ user, onLogout }) => {
       console.error('Upload failed - Full error:', error);
       console.error('Error message:', error.message);
       console.error('Error response:', error.response);
-      alert(`Failed to upload images: ${error.message || 'Please try again'}`);
+
+      debugLogs.push(`❌ ERROR: ${error.message}`);
+      debugLogs.push(`Error stack: ${error.stack?.substring(0, 200)}`);
+      setDebugInfo(debugLogs);
+
+      alert(`Failed to upload images: ${error.message || 'Please try again'}\n\nCheck debug info below for details.`);
     }
   };
 
@@ -300,11 +321,10 @@ const Dashboard = ({ user, onLogout }) => {
                 : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
             }`}
           >
-            {/* Hidden input for camera */}
+            {/* Hidden input for camera (no multiple - iOS issue) */}
             <input
               type="file"
               id="camera-input"
-              multiple
               accept="image/*"
               capture="environment"
               onChange={handleFileSelect}
@@ -383,6 +403,28 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
           )}
         </div>
+
+        {/* Debug Panel */}
+        {debugInfo.length > 0 && (
+          <div className="bg-gray-900 text-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up font-mono text-xs">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">🔍 Debug Info</h3>
+              <button
+                onClick={() => setDebugInfo([])}
+                className="px-3 py-1 bg-red-600 rounded-lg text-xs hover:bg-red-700"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="space-y-1 overflow-auto max-h-96">
+              {debugInfo.map((log, idx) => (
+                <div key={idx} className="bg-gray-800 p-2 rounded break-all">
+                  {log}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Upload History */}
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up">
