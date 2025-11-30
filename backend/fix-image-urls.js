@@ -5,18 +5,11 @@
  * Contoh format salah: ".deluwang.online/api/assets/xxx.jpg"
  * Format benar: "/assets/xxx.jpg"
  *
- * Run this script from backend directory or use fix-image-urls.sh
+ * Run from backend directory: node fix-image-urls.js
  */
 
 const mongoose = require('mongoose');
-const path = require('path');
-
-// Try to load .env from current directory or parent
-try {
-  require('dotenv').config({ path: path.join(__dirname, '.env') });
-} catch (e) {
-  require('dotenv').config();
-}
+require('dotenv').config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/invoice_db?authSource=admin';
 

@@ -14,12 +14,12 @@ if [ ! -d "backend/node_modules" ]; then
     exit 1
 fi
 
-# Run the fix script from backend directory (has node_modules)
+# Run the fix script from backend directory
 echo "🛠️  Running image URL fixer..."
 echo ""
 
 cd backend
-node ../scripts/fix-image-urls.js
+node fix-image-urls.js
 EXIT_CODE=$?
 cd ..
 
