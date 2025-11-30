@@ -174,8 +174,15 @@ const Dashboard = ({ user, onLogout }) => {
     const maxSize = 20 * 1024 * 1024; // 20MB limit
 
     Array.from(files).forEach(file => {
-      // Accept all image types
-      if (file.type.startsWith('image/')) {
+      // Accept if:
+      // 1. type starts with 'image/'
+      // 2. OR type is empty (camera capture on iOS sometimes has empty type)
+      // 3. OR file has image extension
+      const isImage = file.type.startsWith('image/') ||
+                      file.type === '' ||
+                      /\.(jpe?g|png|gif|bmp|webp|heic|heif|avif)$/i.test(file.name);
+
+      if (isImage) {
         if (file.size <= maxSize) {
           validFiles.push(file);
         } else {
@@ -201,15 +208,32 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleFileSelect = (e) => {
-    const files = validateFiles(e.target.files);
-    setSelectedFiles(files);
+    const files = e.target.files;
+    console.log('Files selected:', files);
+
+    // Log each file details for debugging
+    Array.from(files).forEach((file, idx) => {
+      console.log(`File ${idx}:`, {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      });
+    });
+
+    const validatedFiles = validateFiles(files);
+    console.log('Validated files:', validatedFiles);
+    setSelectedFiles(validatedFiles);
   };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
+    console.log('Starting upload with files:', selectedFiles);
+
     try {
       const result = await api.uploadImages(user._id, selectedFiles);
+      console.log('Upload success:', result);
 
       setUploadCount(result.count);
       setShowModal(true);
@@ -218,8 +242,10 @@ const Dashboard = ({ user, onLogout }) => {
       // Reload uploads
       loadUploads();
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload images. Please try again.');
+      console.error('Upload failed - Full error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      alert(`Failed to upload images: ${error.message || 'Please try again'}`);
     }
   };
 

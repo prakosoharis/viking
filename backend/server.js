@@ -60,7 +60,12 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   // Accept all image formats (JPEG, PNG, HEIC, HEIF, WebP, AVIF, etc.)
-  if (file.mimetype.startsWith('image/')) {
+  // Also accept files with empty mimetype (iOS camera sometimes sends empty type)
+  const isImage = file.mimetype.startsWith('image/') ||
+                  file.mimetype === '' ||
+                  /\.(jpe?g|png|gif|bmp|webp|heic|heif|avif)$/i.test(file.originalname);
+
+  if (isImage) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Only image files allowed'), false);
@@ -122,8 +127,25 @@ app.get('/api/users', async (req, res) => {
 // ==================== UPLOAD ROUTES ====================
 
 // Upload images
-app.post('/api/uploads', upload.array('images', 10), async (req, res) => {
+app.post('/api/uploads', (req, res, next) => {
+  upload.array('images', 10)(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+      return res.status(400).json({
+        error: err.message || 'File upload error',
+        code: err.code
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('Upload request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+
     const { user_id } = req.body;
 
     if (!user_id) {
@@ -133,6 +155,16 @@ app.post('/api/uploads', upload.array('images', 10), async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
+
+    // Log file details
+    req.files.forEach((file, idx) => {
+      console.log(`File ${idx}:`, {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        filename: file.filename
+      });
+    });
 
     const uploadPromises = req.files.map(file => {
       const imageUrl = `/assets/${file.filename}`;
@@ -144,6 +176,8 @@ app.post('/api/uploads', upload.array('images', 10), async (req, res) => {
     });
 
     const uploads = await Promise.all(uploadPromises);
+    console.log(`Successfully uploaded ${uploads.length} files`);
+
     res.json({
       success: true,
       count: uploads.length,
