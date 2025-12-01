@@ -169,37 +169,7 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  const validateFiles = (files) => {
-    const validFiles = [];
-    const invalidFiles = [];
-    const maxSize = 20 * 1024 * 1024; // 20MB limit
-
-    Array.from(files).forEach(file => {
-      // Accept if:
-      // 1. type starts with 'image/'
-      // 2. OR type is empty (camera capture on iOS sometimes has empty type)
-      // 3. OR file has image extension
-      const isImage = file.type.startsWith('image/') ||
-                      file.type === '' ||
-                      /\.(jpe?g|png|gif|bmp|webp|heic|heif|avif)$/i.test(file.name);
-
-      if (isImage) {
-        if (file.size <= maxSize) {
-          validFiles.push(file);
-        } else {
-          invalidFiles.push(`${file.name} (too large, max 20MB)`);
-        }
-      } else {
-        invalidFiles.push(`${file.name} (not an image)`);
-      }
-    });
-
-    if (invalidFiles.length > 0) {
-      alert(`Invalid files:\n${invalidFiles.join('\n')}\n\nOnly image files up to 20MB allowed`);
-    }
-
-    return validFiles;
-  };
+  // Not needed anymore - validation done during processing
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -211,8 +181,9 @@ const Dashboard = ({ user, onLogout }) => {
   const handleFileSelect = async (e) => {
     const files = e.target.files;
     const debugLogs = [];
+    const inputId = e.target.id; // camera-input or gallery-input
 
-    debugLogs.push(`📁 Files selected: ${files.length}`);
+    debugLogs.push(`📁 Files selected: ${files.length} (from ${inputId})`);
     console.log('Files selected:', files);
 
     // Log each file details for debugging
@@ -229,25 +200,27 @@ const Dashboard = ({ user, onLogout }) => {
 
     setDebugInfo([...debugLogs]);
 
-    // iOS Safari camera fix: Read and recreate File objects
-    debugLogs.push(`🔧 Processing files for iOS compatibility...`);
+    // iOS Safari camera fix: Convert to data objects (arrayBuffer + metadata)
+    debugLogs.push(`🔧 Processing files for upload...`);
     setDebugInfo([...debugLogs]);
 
     const processedFiles = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        // Read file completely to detach from camera context
+        // Read file as ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
 
-        // Create new File from ArrayBuffer (detached from camera)
-        const newFile = new File(
-          [arrayBuffer],
-          file.name,
-          { type: file.type || 'image/jpeg' }
-        );
+        // Store as object with buffer and metadata
+        const fileData = {
+          name: file.name,
+          type: file.type || 'image/jpeg',
+          size: file.size,
+          arrayBuffer: arrayBuffer,
+          fromCamera: inputId === 'camera-input' // Flag for camera files
+        };
 
-        processedFiles.push(newFile);
+        processedFiles.push(fileData);
         debugLogs.push(`✅ Processed file ${i}: ${file.name}`);
         setDebugInfo([...debugLogs]);
       } catch (error) {
@@ -256,12 +229,11 @@ const Dashboard = ({ user, onLogout }) => {
       }
     }
 
-    const validatedFiles = validateFiles(processedFiles);
-    debugLogs.push(`✅ Validated: ${validatedFiles.length} files`);
-    console.log('Validated files:', validatedFiles);
+    debugLogs.push(`✅ Ready to upload: ${processedFiles.length} files`);
+    console.log('Processed files:', processedFiles);
 
     setDebugInfo([...debugLogs]);
-    setSelectedFiles(validatedFiles);
+    setSelectedFiles(processedFiles);
   };
 
   const handleUpload = async () => {

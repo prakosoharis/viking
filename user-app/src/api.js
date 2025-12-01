@@ -28,7 +28,18 @@ class ApiService {
     });
   }
 
-  // Upload endpoints (files are already processed for iOS compatibility)
+  // Helper: Convert ArrayBuffer to Base64
+  arrayBufferToBase64(buffer, mimeType) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    return `data:${mimeType};base64,${base64}`;
+  }
+
+  // Upload endpoints (files are already processed as arrayBuffer + metadata)
   async uploadImages(userId, files, onProgress) {
     const log = (msg) => {
       console.log(msg);
@@ -36,57 +47,126 @@ class ApiService {
     };
 
     try {
-      log(`📦 Preparing FormData...`);
-      const formData = new FormData();
-      formData.append('user_id', userId);
+      // Check if any file is from camera
+      const hasCameraFiles = files.some(f => f.fromCamera);
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
-        formData.append('images', file, file.name);
-      }
+      if (hasCameraFiles) {
+        // Use Base64 method for camera files (iOS Safari workaround)
+        log(`📦 Converting files to Base64 (iOS camera mode)...`);
 
-      const apiUrl = `${API_BASE_URL}/uploads`;
-      log(`🌐 Sending to: ${apiUrl}`);
-      log(`📨 Making fetch request...`);
+        const filesData = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          log(`🔄 Converting file ${i}: ${file.name}...`);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        log(`⏱️ Timeout after 60s`);
-        controller.abort();
-      }, 60000);
+          const base64 = this.arrayBufferToBase64(file.arrayBuffer, file.type);
+          filesData.push({
+            name: file.name,
+            type: file.type,
+            data: base64
+          });
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId));
-
-      log(`📬 Response: ${response.status} ${response.statusText}`);
-
-      if (!response.ok) {
-        log(`❌ Response not OK`);
-        let errorData;
-        try {
-          errorData = await response.json();
-          log(`Error: ${JSON.stringify(errorData)}`);
-        } catch (e) {
-          errorData = { error: response.statusText };
+          log(`✅ File ${i} converted to Base64`);
         }
-        throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
-      }
 
-      log(`✅ Parsing response...`);
-      const result = await response.json();
-      log(`✅ Success: ${result.count} files uploaded`);
-      return result;
+        const apiUrl = `${API_BASE_URL}/uploads-base64`;
+        log(`🌐 Sending Base64 data to: ${apiUrl}`);
+        log(`📨 Making JSON request...`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          log(`⏱️ Timeout after 60s`);
+          controller.abort();
+        }, 60000);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            files: filesData
+          }),
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        log(`📬 Response: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          log(`❌ Response not OK`);
+          let errorData;
+          try {
+            errorData = await response.json();
+            log(`Error: ${JSON.stringify(errorData)}`);
+          } catch (e) {
+            errorData = { error: response.statusText };
+          }
+          throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
+        }
+
+        log(`✅ Parsing response...`);
+        const result = await response.json();
+        log(`✅ Success: ${result.count} files uploaded`);
+        return result;
+
+      } else {
+        // Use FormData for gallery files (faster)
+        log(`📦 Preparing FormData (gallery mode)...`);
+        const formData = new FormData();
+        formData.append('user_id', userId);
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+
+          // Create File from ArrayBuffer
+          const fileBlob = new File([file.arrayBuffer], file.name, { type: file.type });
+          formData.append('images', fileBlob, file.name);
+        }
+
+        const apiUrl = `${API_BASE_URL}/uploads`;
+        log(`🌐 Sending FormData to: ${apiUrl}`);
+        log(`📨 Making FormData request...`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          log(`⏱️ Timeout after 60s`);
+          controller.abort();
+        }, 60000);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        log(`📬 Response: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          log(`❌ Response not OK`);
+          let errorData;
+          try {
+            errorData = await response.json();
+            log(`Error: ${JSON.stringify(errorData)}`);
+          } catch (e) {
+            errorData = { error: response.statusText };
+          }
+          throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
+        }
+
+        log(`✅ Parsing response...`);
+        const result = await response.json();
+        log(`✅ Success: ${result.count} files uploaded`);
+        return result;
+      }
     } catch (error) {
       log(`💥 Error: ${error.name} - ${error.message}`);
 
       if (error.name === 'AbortError') {
         throw new Error('Upload timeout - file too large or slow connection');
       } else if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
-        throw new Error('Network error - check your connection');
+        throw new Error('Network error - please try again');
       }
 
       throw error;
