@@ -208,7 +208,7 @@ const Dashboard = ({ user, onLogout }) => {
     setSelectedFiles(files);
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = e.target.files;
     const debugLogs = [];
 
@@ -227,11 +227,40 @@ const Dashboard = ({ user, onLogout }) => {
       });
     });
 
-    const validatedFiles = validateFiles(files);
+    setDebugInfo([...debugLogs]);
+
+    // iOS Safari camera fix: Read and recreate File objects
+    debugLogs.push(`🔧 Processing files for iOS compatibility...`);
+    setDebugInfo([...debugLogs]);
+
+    const processedFiles = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        // Read file completely to detach from camera context
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Create new File from ArrayBuffer (detached from camera)
+        const newFile = new File(
+          [arrayBuffer],
+          file.name,
+          { type: file.type || 'image/jpeg' }
+        );
+
+        processedFiles.push(newFile);
+        debugLogs.push(`✅ Processed file ${i}: ${file.name}`);
+        setDebugInfo([...debugLogs]);
+      } catch (error) {
+        debugLogs.push(`❌ Failed to process file ${i}: ${error.message}`);
+        setDebugInfo([...debugLogs]);
+      }
+    }
+
+    const validatedFiles = validateFiles(processedFiles);
     debugLogs.push(`✅ Validated: ${validatedFiles.length} files`);
     console.log('Validated files:', validatedFiles);
 
-    setDebugInfo(debugLogs);
+    setDebugInfo([...debugLogs]);
     setSelectedFiles(validatedFiles);
   };
 
