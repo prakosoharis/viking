@@ -1,4 +1,11 @@
+import axios from 'axios';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Configure axios
+axios.defaults.timeout = 120000; // 120 seconds for large uploads
+axios.defaults.maxContentLength = 50 * 1024 * 1024; // 50MB
+axios.defaults.maxBodyLength = 50 * 1024 * 1024; // 50MB
 
 class ApiService {
   // User endpoints
@@ -39,7 +46,7 @@ class ApiService {
     return `data:${mimeType};base64,${base64}`;
   }
 
-  // Upload endpoints (files are already processed as arrayBuffer + metadata)
+  // Upload endpoints using AXIOS (more reliable than fetch for iOS)
   async uploadImages(userId, files, onProgress) {
     const log = (msg) => {
       console.log(msg);
@@ -71,44 +78,23 @@ class ApiService {
 
         const apiUrl = `${API_BASE_URL}/uploads-base64`;
         log(`🌐 Sending Base64 data to: ${apiUrl}`);
-        log(`📨 Making JSON request...`);
+        log(`📨 Making axios POST request...`);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          log(`⏱️ Timeout after 60s`);
-          controller.abort();
-        }, 60000);
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
+        const response = await axios.post(apiUrl, {
+          user_id: userId,
+          files: filesData
+        }, {
+          timeout: 120000, // 2 minutes
+          maxContentLength: 50 * 1024 * 1024,
+          maxBodyLength: 50 * 1024 * 1024,
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: userId,
-            files: filesData
-          }),
-          signal: controller.signal,
-        }).finally(() => clearTimeout(timeoutId));
+          }
+        });
 
         log(`📬 Response: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-          log(`❌ Response not OK`);
-          let errorData;
-          try {
-            errorData = await response.json();
-            log(`Error: ${JSON.stringify(errorData)}`);
-          } catch (e) {
-            errorData = { error: response.statusText };
-          }
-          throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
-        }
-
-        log(`✅ Parsing response...`);
-        const result = await response.json();
-        log(`✅ Success: ${result.count} files uploaded`);
-        return result;
+        log(`✅ Success: ${response.data.count} files uploaded`);
+        return response.data;
 
       } else {
         // Use FormData for gallery files (faster)
@@ -120,56 +106,44 @@ class ApiService {
           const file = files[i];
           log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
 
-          // Create File from ArrayBuffer
-          const fileBlob = new File([file.arrayBuffer], file.name, { type: file.type });
-          formData.append('images', fileBlob, file.name);
+          // Create Blob from ArrayBuffer
+          const blob = new Blob([file.arrayBuffer], { type: file.type });
+          formData.append('images', blob, file.name);
         }
 
         const apiUrl = `${API_BASE_URL}/uploads`;
         log(`🌐 Sending FormData to: ${apiUrl}`);
-        log(`📨 Making FormData request...`);
+        log(`📨 Making axios POST request...`);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          log(`⏱️ Timeout after 60s`);
-          controller.abort();
-        }, 60000);
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal,
-        }).finally(() => clearTimeout(timeoutId));
+        const response = await axios.post(apiUrl, formData, {
+          timeout: 120000,
+          maxContentLength: 50 * 1024 * 1024,
+          maxBodyLength: 50 * 1024 * 1024,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        });
 
         log(`📬 Response: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-          log(`❌ Response not OK`);
-          let errorData;
-          try {
-            errorData = await response.json();
-            log(`Error: ${JSON.stringify(errorData)}`);
-          } catch (e) {
-            errorData = { error: response.statusText };
-          }
-          throw new Error(errorData?.error || `Upload failed: ${response.statusText}`);
-        }
-
-        log(`✅ Parsing response...`);
-        const result = await response.json();
-        log(`✅ Success: ${result.count} files uploaded`);
-        return result;
+        log(`✅ Success: ${response.data.count} files uploaded`);
+        return response.data;
       }
     } catch (error) {
-      log(`💥 Error: ${error.name} - ${error.message}`);
+      log(`💥 Axios Error: ${error.message}`);
 
-      if (error.name === 'AbortError') {
-        throw new Error('Upload timeout - file too large or slow connection');
-      } else if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
-        throw new Error('Network error - please try again');
+      if (error.response) {
+        // Server responded with error
+        log(`Server error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+        throw new Error(error.response.data.error || `Upload failed: ${error.response.status}`);
+      } else if (error.request) {
+        // Request made but no response
+        log(`No response received: ${error.request}`);
+        throw new Error('No response from server - check your connection');
+      } else {
+        // Something else
+        log(`Request setup error: ${error.message}`);
+        throw new Error(`Upload error: ${error.message}`);
       }
-
-      throw error;
     }
   }
 
