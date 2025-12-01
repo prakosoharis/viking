@@ -200,6 +200,62 @@ app.post('/api/uploads', (req, res, next) => {
   }
 });
 
+// Upload images via Base64 (iOS Safari camera workaround)
+app.post('/api/uploads-base64', async (req, res) => {
+  try {
+    console.log('Base64 upload request received');
+    const { user_id, files } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files provided' });
+    }
+
+    console.log(`Processing ${files.length} base64 files`);
+
+    const uploadPromises = files.map(async (fileData, idx) => {
+      // Extract base64 data (remove data:image/jpeg;base64, prefix)
+      const matches = fileData.data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        throw new Error(`Invalid base64 data for file ${idx}`);
+      }
+
+      const imageBuffer = Buffer.from(matches[2], 'base64');
+      const ext = fileData.type.split('/')[1] || 'jpg';
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}.${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+
+      console.log(`Saving file ${idx}: ${filename} (${(imageBuffer.length/1024).toFixed(1)}KB)`);
+
+      // Write file to disk
+      await fs.promises.writeFile(filepath, imageBuffer);
+
+      // Save to database
+      const imageUrl = `/assets/${filename}`;
+      return new Upload({
+        user_id,
+        image_url: imageUrl,
+        status: 'completed'
+      }).save();
+    });
+
+    const uploads = await Promise.all(uploadPromises);
+    console.log(`Successfully uploaded ${uploads.length} base64 files`);
+
+    res.json({
+      success: true,
+      count: uploads.length,
+      uploads
+    });
+  } catch (error) {
+    console.error('Base64 upload error:', error);
+    res.status(500).json({ error: error.message || 'Server error during upload' });
+  }
+});
+
 // Get uploads by user ID
 app.get('/api/uploads/user/:userId', async (req, res) => {
   try {

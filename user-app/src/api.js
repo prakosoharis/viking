@@ -18,7 +18,17 @@ class ApiService {
     return response.json();
   }
 
-  // Upload endpoints
+  // Helper to convert File to Base64
+  fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Upload endpoints with iOS Safari workaround
   async uploadImages(userId, files, onProgress) {
     const log = (msg) => {
       console.log(msg);
@@ -26,35 +36,84 @@ class ApiService {
     };
 
     try {
-      log(`📦 Preparing FormData...`);
-      const formData = new FormData();
-      formData.append('user_id', userId);
+      log(`📦 Preparing upload data...`);
 
-      // Add files directly to FormData (simpler approach)
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+      // Try FormData first (works for gallery files)
+      const tryFormData = async () => {
+        const formData = new FormData();
+        formData.append('user_id', userId);
 
-        // Append file directly without Blob conversion
-        formData.append('images', file, file.name);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+          formData.append('images', file, file.name);
+        }
+
+        const apiUrl = `${API_BASE_URL}/uploads`;
+        log(`🌐 Sending FormData to: ${apiUrl}`);
+        log(`📨 Making fetch request...`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        return response;
+      };
+
+      // Fallback: Base64 method (for iOS camera)
+      const tryBase64 = async () => {
+        log(`🔄 FormData failed, trying Base64 method (iOS workaround)...`);
+
+        const filesData = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          log(`🔄 Converting file ${i} to Base64...`);
+
+          const base64 = await this.fileToBase64(file);
+          filesData.push({
+            name: file.name,
+            type: file.type || 'image/jpeg',
+            data: base64
+          });
+          log(`✅ File ${i} converted`);
+        }
+
+        const apiUrl = `${API_BASE_URL}/uploads-base64`;
+        log(`🌐 Sending Base64 to: ${apiUrl}`);
+        log(`📨 Making fetch request...`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            files: filesData
+          }),
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        return response;
+      };
+
+      // Try FormData first
+      let response;
+      try {
+        response = await tryFormData();
+      } catch (error) {
+        log(`⚠️ FormData failed: ${error.message}`);
+        // Fallback to Base64
+        response = await tryBase64();
       }
-
-      const apiUrl = `${API_BASE_URL}/uploads`;
-      log(`🌐 Sending to: ${apiUrl}`);
-
-      // Create AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        log(`⏱️ Request timeout after 60s`);
-        controller.abort();
-      }, 60000); // 60 second timeout
-
-      log(`📨 Making fetch request...`);
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId));
 
       log(`📬 Response received: ${response.status} ${response.statusText}`);
 
@@ -82,7 +141,7 @@ class ApiService {
       if (error.name === 'AbortError') {
         throw new Error('Upload timeout - file too large or slow connection');
       } else if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
-        throw new Error('Network error - check your internet connection');
+        throw new Error('Network error - iOS Safari camera bug, trying workaround...');
       }
 
       throw error;
