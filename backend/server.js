@@ -141,9 +141,7 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/uploads', (req, res, next) => {
   upload.array('images', 10)(req, res, (err) => {
     if (err) {
-      console.error('Multer error:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
+      console.error('Multer error:', err.message);
       return res.status(400).json({
         error: err.message || 'File upload error',
         code: err.code
@@ -153,10 +151,6 @@ app.post('/api/uploads', (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    console.log('Upload request received');
-    console.log('Body:', req.body);
-    console.log('Files:', req.files);
-
     const { user_id } = req.body;
 
     if (!user_id) {
@@ -166,16 +160,6 @@ app.post('/api/uploads', (req, res, next) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
-
-    // Log file details
-    req.files.forEach((file, idx) => {
-      console.log(`File ${idx}:`, {
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        filename: file.filename
-      });
-    });
 
     const uploadPromises = req.files.map(file => {
       const imageUrl = `/assets/${file.filename}`;
@@ -187,7 +171,6 @@ app.post('/api/uploads', (req, res, next) => {
     });
 
     const uploads = await Promise.all(uploadPromises);
-    console.log(`Successfully uploaded ${uploads.length} files`);
 
     res.json({
       success: true,
@@ -203,7 +186,6 @@ app.post('/api/uploads', (req, res, next) => {
 // Upload images via Base64 (iOS Safari camera workaround)
 app.post('/api/uploads-base64', async (req, res) => {
   try {
-    console.log('Base64 upload request received');
     const { user_id, files } = req.body;
 
     if (!user_id) {
@@ -213,8 +195,6 @@ app.post('/api/uploads-base64', async (req, res) => {
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });
     }
-
-    console.log(`Processing ${files.length} base64 files`);
 
     const uploadPromises = files.map(async (fileData, idx) => {
       // Extract base64 data (remove data:image/jpeg;base64, prefix)
@@ -227,8 +207,6 @@ app.post('/api/uploads-base64', async (req, res) => {
       const ext = fileData.type.split('/')[1] || 'jpg';
       const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}.${ext}`;
       const filepath = path.join(uploadsDir, filename);
-
-      console.log(`Saving file ${idx}: ${filename} (${(imageBuffer.length/1024).toFixed(1)}KB)`);
 
       // Write file to disk
       await fs.promises.writeFile(filepath, imageBuffer);
@@ -243,7 +221,6 @@ app.post('/api/uploads-base64', async (req, res) => {
     });
 
     const uploads = await Promise.all(uploadPromises);
-    console.log(`Successfully uploaded ${uploads.length} base64 files`);
 
     res.json({
       success: true,

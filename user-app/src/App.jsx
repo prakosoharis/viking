@@ -153,7 +153,6 @@ const Dashboard = ({ user, onLogout }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
-  const [debugInfo, setDebugInfo] = useState([]);
 
   useEffect(() => {
     loadUploads();
@@ -180,29 +179,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleFileSelect = async (e) => {
     const files = e.target.files;
-    const debugLogs = [];
     const inputId = e.target.id; // camera-input or gallery-input
-
-    debugLogs.push(`📁 Files selected: ${files.length} (from ${inputId})`);
-    console.log('Files selected:', files);
-
-    // Log each file details for debugging
-    Array.from(files).forEach((file, idx) => {
-      const info = `File ${idx}: ${file.name} | Type: "${file.type}" | Size: ${(file.size/1024).toFixed(1)}KB`;
-      debugLogs.push(info);
-      console.log(`File ${idx}:`, {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastModified: file.lastModified
-      });
-    });
-
-    setDebugInfo([...debugLogs]);
-
-    // iOS Safari camera fix: Convert to data objects (arrayBuffer + metadata)
-    debugLogs.push(`🔧 Processing files for upload...`);
-    setDebugInfo([...debugLogs]);
 
     const processedFiles = [];
     for (let i = 0; i < files.length; i++) {
@@ -221,44 +198,19 @@ const Dashboard = ({ user, onLogout }) => {
         };
 
         processedFiles.push(fileData);
-        debugLogs.push(`✅ Processed file ${i}: ${file.name}`);
-        setDebugInfo([...debugLogs]);
       } catch (error) {
-        debugLogs.push(`❌ Failed to process file ${i}: ${error.message}`);
-        setDebugInfo([...debugLogs]);
+        console.error(`Failed to process file ${i}:`, error);
       }
     }
 
-    debugLogs.push(`✅ Ready to upload: ${processedFiles.length} files`);
-    console.log('Processed files:', processedFiles);
-
-    setDebugInfo([...debugLogs]);
     setSelectedFiles(processedFiles);
   };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
-    const debugLogs = [...debugInfo];
-    debugLogs.push(`🚀 Starting upload...`);
-    debugLogs.push(`User ID: ${user._id}`);
-    debugLogs.push(`Files count: ${selectedFiles.length}`);
-    setDebugInfo([...debugLogs]);
-
-    console.log('Starting upload with files:', selectedFiles);
-
     try {
-      debugLogs.push(`📡 Calling API uploadImages...`);
-      setDebugInfo([...debugLogs]);
-
-      const result = await api.uploadImages(user._id, selectedFiles, (msg) => {
-        debugLogs.push(msg);
-        setDebugInfo([...debugLogs]);
-      });
-      console.log('Upload success:', result);
-
-      debugLogs.push(`✅ Upload successful! ${result.count} files uploaded`);
-      setDebugInfo([...debugLogs]);
+      const result = await api.uploadImages(user._id, selectedFiles);
 
       setUploadCount(result.count);
       setShowModal(true);
@@ -267,20 +219,8 @@ const Dashboard = ({ user, onLogout }) => {
       // Reload uploads
       loadUploads();
     } catch (error) {
-      console.error('Upload failed - Full error:', error);
-      console.error('Error message:', error.message);
-      console.error('Error name:', error.name);
-      console.error('Error stack:', error.stack);
-
-      debugLogs.push(`❌ ERROR: ${error.message}`);
-      debugLogs.push(`Error name: ${error.name || 'undefined'}`);
-      debugLogs.push(`Error type: ${typeof error}`);
-      if (error.stack) {
-        debugLogs.push(`Stack: ${error.stack.substring(0, 300)}`);
-      }
-      setDebugInfo([...debugLogs]);
-
-      alert(`Failed to upload images: ${error.message || 'Please try again'}\n\nCheck debug info below for details.`);
+      console.error('Upload failed:', error);
+      alert(`Failed to upload images: ${error.message || 'Please try again'}`);
     }
   };
 
@@ -417,28 +357,6 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
           )}
         </div>
-
-        {/* Debug Panel */}
-        {debugInfo.length > 0 && (
-          <div className="bg-gray-900 text-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up font-mono text-xs">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">🔍 Debug Info</h3>
-              <button
-                onClick={() => setDebugInfo([])}
-                className="px-3 py-1 bg-red-600 rounded-lg text-xs hover:bg-red-700"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="space-y-1 overflow-auto max-h-96">
-              {debugInfo.map((log, idx) => (
-                <div key={idx} className="bg-gray-800 p-2 rounded break-all">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Upload History */}
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up">

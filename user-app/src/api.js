@@ -47,44 +47,29 @@ class ApiService {
   }
 
   // Upload endpoints using AXIOS (more reliable than fetch for iOS)
-  async uploadImages(userId, files, onProgress) {
-    const log = (msg) => {
-      console.log(msg);
-      if (onProgress) onProgress(msg);
-    };
-
+  async uploadImages(userId, files) {
     try {
       // Check if any file is from camera
       const hasCameraFiles = files.some(f => f.fromCamera);
 
       if (hasCameraFiles) {
         // Use Base64 method for camera files (iOS Safari workaround)
-        log(`📦 Converting files to Base64 (iOS camera mode)...`);
-
         const filesData = [];
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          log(`🔄 Converting file ${i}: ${file.name}...`);
-
           const base64 = this.arrayBufferToBase64(file.arrayBuffer, file.type);
           filesData.push({
             name: file.name,
             type: file.type,
             data: base64
           });
-
-          log(`✅ File ${i} converted to Base64`);
         }
 
-        const apiUrl = `${API_BASE_URL}/uploads-base64`;
-        log(`🌐 Sending Base64 data to: ${apiUrl}`);
-        log(`📨 Making axios POST request...`);
-
-        const response = await axios.post(apiUrl, {
+        const response = await axios.post(`${API_BASE_URL}/uploads-base64`, {
           user_id: userId,
           files: filesData
         }, {
-          timeout: 120000, // 2 minutes
+          timeout: 120000,
           maxContentLength: 50 * 1024 * 1024,
           maxBodyLength: 50 * 1024 * 1024,
           headers: {
@@ -92,30 +77,20 @@ class ApiService {
           }
         });
 
-        log(`📬 Response: ${response.status} ${response.statusText}`);
-        log(`✅ Success: ${response.data.count} files uploaded`);
         return response.data;
 
       } else {
         // Use FormData for gallery files (faster)
-        log(`📦 Preparing FormData (gallery mode)...`);
         const formData = new FormData();
         formData.append('user_id', userId);
 
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          log(`➕ Adding file ${i}: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
-
-          // Create Blob from ArrayBuffer
           const blob = new Blob([file.arrayBuffer], { type: file.type });
           formData.append('images', blob, file.name);
         }
 
-        const apiUrl = `${API_BASE_URL}/uploads`;
-        log(`🌐 Sending FormData to: ${apiUrl}`);
-        log(`📨 Making axios POST request...`);
-
-        const response = await axios.post(apiUrl, formData, {
+        const response = await axios.post(`${API_BASE_URL}/uploads`, formData, {
           timeout: 120000,
           maxContentLength: 50 * 1024 * 1024,
           maxBodyLength: 50 * 1024 * 1024,
@@ -124,24 +99,17 @@ class ApiService {
           }
         });
 
-        log(`📬 Response: ${response.status} ${response.statusText}`);
-        log(`✅ Success: ${response.data.count} files uploaded`);
         return response.data;
       }
     } catch (error) {
-      log(`💥 Axios Error: ${error.message}`);
-
       if (error.response) {
         // Server responded with error
-        log(`Server error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
         throw new Error(error.response.data.error || `Upload failed: ${error.response.status}`);
       } else if (error.request) {
         // Request made but no response
-        log(`No response received: ${error.request}`);
         throw new Error('No response from server - check your connection');
       } else {
         // Something else
-        log(`Request setup error: ${error.message}`);
         throw new Error(`Upload error: ${error.message}`);
       }
     }
