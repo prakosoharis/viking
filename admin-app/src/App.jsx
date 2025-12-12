@@ -635,6 +635,7 @@ const Dashboard = ({ onLogout }) => {
   // Existing state
   const [usersWithUploads, setUsersWithUploads] = useState([]);
   const [expandedUser, setExpandedUser] = useState(null);
+  const [expandedSession, setExpandedSession] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
 
@@ -730,6 +731,39 @@ const Dashboard = ({ onLogout }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Session grouping functions
+  const groupUploadsBySession = (uploads) => {
+    const sessions = {};
+    uploads.forEach(upload => {
+      const sessionNum = upload.session_number || 1;
+      if (!sessions[sessionNum]) {
+        sessions[sessionNum] = [];
+      }
+      sessions[sessionNum].push(upload);
+    });
+
+    return Object.entries(sessions)
+      .map(([sessionNum, uploads]) => ({
+        sessionNumber: parseInt(sessionNum),
+        uploads: uploads.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at)),
+        uploadedAt: uploads[0].uploaded_at
+      }))
+      .sort((a, b) => b.sessionNumber - a.sessionNumber);
+  };
+
+  const toggleSession = (userId, sessionNumber) => {
+    const key = `${userId}-${sessionNumber}`;
+    setExpandedSession(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const isSessionExpanded = (userId, sessionNumber) => {
+    const key = `${userId}-${sessionNumber}`;
+    return expandedSession[key] || false;
   };
 
   // Selection handlers
@@ -834,6 +868,40 @@ const Dashboard = ({ onLogout }) => {
     } catch (error) {
       console.error('Download failed:', error);
       alert('Failed to download images');
+    }
+  };
+
+  const downloadSession = async (sessionUploads, sessionNumber, userName) => {
+    if (sessionUploads.length === 0) {
+      alert('No images in this session');
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      const folderName = `session-${sessionNumber}`;
+      const folder = zip.folder(folderName);
+
+      // Download all images in the session
+      for (let i = 0; i < sessionUploads.length; i++) {
+        const upload = sessionUploads[i];
+        const imageUrl = api.getImageUrl(upload.image_url);
+        const filename = imageUrl.split('/').pop();
+
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        folder.file(filename, blob);
+      }
+
+      // Generate and download zip
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipFileName = `${userName || 'user'}-session-${sessionNumber}-${Date.now()}.zip`;
+      saveAs(zipBlob, zipFileName);
+
+      alert(`Session ${sessionNumber} (${sessionUploads.length} images) downloaded successfully`);
+    } catch (error) {
+      console.error('Download session failed:', error);
+      alert('Failed to download session');
     }
   };
 
@@ -1172,70 +1240,132 @@ const Dashboard = ({ onLogout }) => {
                       </div>
                     </button>
 
-                    {/* Expanded Content - User's Uploads */}
+                    {/* Expanded Content - User's Upload Sessions */}
                     {isExpanded && (
                       <div className="px-6 py-6 bg-gray-50 border-t-2 border-gray-200 animate-slide-up">
                         <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                           <ImageIcon className="w-5 h-5" />
                           All Uploads ({user.uploads.length})
                         </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {user.uploads.map((upload) => {
-                            const imageUrl = api.getImageUrl(upload.image_url);
-                            const isSelected = selectedImages.includes(imageUrl);
+
+                        {/* Session Accordion */}
+                        <div className="space-y-3">
+                          {groupUploadsBySession(user.uploads).map((session) => {
+                            const sessionExpanded = isSessionExpanded(user._id, session.sessionNumber);
 
                             return (
-                              <div
-                                key={upload._id}
-                                className={`group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all ${isSelected ? 'ring-4 ring-purple-500' : ''}`}
-                              >
-                                {/* Checkbox */}
-                                <div className="absolute top-2 left-2 z-10">
+                              <div key={session.sessionNumber} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                                {/* Session Header */}
+                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50">
+                                  <button
+                                    onClick={() => toggleSession(user._id, session.sessionNumber)}
+                                    className="flex items-center gap-3 flex-1"
+                                  >
+                                    <div className="w-10 h-10 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold">
+                                      {session.sessionNumber}
+                                    </div>
+                                    <div className="text-left">
+                                      <h5 className="font-bold text-gray-900">
+                                        Upload Session {session.sessionNumber}
+                                      </h5>
+                                      <div className="flex items-center gap-3 text-xs text-gray-600 mt-0.5">
+                                        <span className="flex items-center gap-1">
+                                          <ImageIcon className="w-3 h-3" />
+                                          {session.uploads.length} {session.uploads.length === 1 ? 'file' : 'files'}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          {formatDate(session.uploadedAt)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <ChevronDown
+                                      className={`w-5 h-5 text-gray-600 transition-transform ml-auto ${
+                                        sessionExpanded ? 'rotate-180' : ''
+                                      }`}
+                                    />
+                                  </button>
+
+                                  {/* Download Session Button */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      toggleImageSelection(imageUrl);
+                                      downloadSession(session.uploads, session.sessionNumber, user.company_name || user.phone_number);
                                     }}
-                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                                      isSelected
-                                        ? 'bg-purple-600 text-white'
-                                        : 'bg-white/80 text-gray-600 hover:bg-white'
-                                    }`}
+                                    className="ml-3 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm font-semibold"
+                                    title="Download Session"
                                   >
-                                    {isSelected && <Check className="w-5 h-5" />}
+                                    <Download className="w-4 h-4" />
+                                    Download
                                   </button>
                                 </div>
 
-                                {/* Download Button */}
-                                <div className="absolute top-2 right-2 z-10">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      downloadSingleImage(imageUrl);
-                                    }}
-                                    className="w-8 h-8 bg-white/80 rounded-lg flex items-center justify-center hover:bg-white transition-all"
-                                    title="Download"
-                                  >
-                                    <Download className="w-4 h-4 text-gray-600" />
-                                  </button>
-                                </div>
+                                {/* Session Content */}
+                                {sessionExpanded && (
+                                  <div className="p-4 bg-white">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                      {session.uploads.map((upload) => {
+                                        const imageUrl = api.getImageUrl(upload.image_url);
+                                        const isSelected = selectedImages.includes(imageUrl);
 
-                                <div
-                                  className="aspect-square overflow-hidden bg-gray-200 cursor-pointer"
-                                  onClick={() => setPreviewImage(imageUrl)}
-                                >
-                                  <img
-                                    src={imageUrl}
-                                    alt="Invoice"
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                  />
-                                </div>
-                                <div className="p-3">
-                                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <Calendar className="w-3 h-3" />
-                                    {formatDate(upload.uploaded_at)}
+                                        return (
+                                          <div
+                                            key={upload._id}
+                                            className={`group relative bg-gray-50 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all ${isSelected ? 'ring-4 ring-purple-500' : ''}`}
+                                          >
+                                            {/* Checkbox */}
+                                            <div className="absolute top-2 left-2 z-10">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  toggleImageSelection(imageUrl);
+                                                }}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                                  isSelected
+                                                    ? 'bg-purple-600 text-white'
+                                                    : 'bg-white/80 text-gray-600 hover:bg-white'
+                                                }`}
+                                              >
+                                                {isSelected && <Check className="w-5 h-5" />}
+                                              </button>
+                                            </div>
+
+                                            {/* Download Button */}
+                                            <div className="absolute top-2 right-2 z-10">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  downloadSingleImage(imageUrl);
+                                                }}
+                                                className="w-8 h-8 bg-white/80 rounded-lg flex items-center justify-center hover:bg-white transition-all"
+                                                title="Download"
+                                              >
+                                                <Download className="w-4 h-4 text-gray-600" />
+                                              </button>
+                                            </div>
+
+                                            <div
+                                              className="aspect-square overflow-hidden bg-gray-200 cursor-pointer"
+                                              onClick={() => setPreviewImage(imageUrl)}
+                                            >
+                                              <img
+                                                src={imageUrl}
+                                                alt="Invoice"
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                              />
+                                            </div>
+                                            <div className="p-3">
+                                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                <Calendar className="w-3 h-3" />
+                                                {formatDate(upload.uploaded_at)}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             );
                           })}

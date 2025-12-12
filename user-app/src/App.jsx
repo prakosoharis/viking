@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -156,10 +156,36 @@ const Dashboard = ({ user, onLogout }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
+  const [expandedSession, setExpandedSession] = useState(null);
 
   useEffect(() => {
     loadUploads();
   }, []);
+
+  // Group uploads by session
+  const groupUploadsBySession = (uploads) => {
+    const sessions = {};
+    uploads.forEach(upload => {
+      const sessionNum = upload.session_number || 1;
+      if (!sessions[sessionNum]) {
+        sessions[sessionNum] = [];
+      }
+      sessions[sessionNum].push(upload);
+    });
+
+    // Convert to array and sort by session number descending (newest first)
+    return Object.entries(sessions)
+      .map(([sessionNum, uploads]) => ({
+        sessionNumber: parseInt(sessionNum),
+        uploads: uploads.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at)),
+        uploadedAt: uploads[0].uploaded_at // Use first upload's timestamp
+      }))
+      .sort((a, b) => b.sessionNumber - a.sessionNumber);
+  };
+
+  const toggleSession = (sessionNumber) => {
+    setExpandedSession(expandedSession === sessionNumber ? null : sessionNumber);
+  };
 
   const loadUploads = async () => {
     try {
@@ -552,22 +578,65 @@ const Dashboard = ({ user, onLogout }) => {
               <p className="text-gray-500 text-sm mt-2">Upload your first invoice above</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {uploads.map((upload) => (
-                <div key={upload.id} className="group relative bg-gray-50 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
-                  <div className="aspect-square overflow-hidden bg-gray-200">
-                    <img
-                      src={api.getImageUrl(upload.image_url)}
-                      alt="Invoice"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(upload.uploaded_at)}
+            <div className="space-y-4">
+              {groupUploadsBySession(uploads).map((session) => (
+                <div key={session.sessionNumber} className="border border-gray-200 rounded-2xl overflow-hidden">
+                  {/* Session Header */}
+                  <button
+                    onClick={() => toggleSession(session.sessionNumber)}
+                    className="w-full flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-lg">
+                        {session.sessionNumber}
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-gray-900 text-lg">
+                          Upload Session {session.sessionNumber}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                          <span className="flex items-center gap-1">
+                            <ImageIcon className="w-4 h-4" />
+                            {session.uploads.length} {session.uploads.length === 1 ? 'file' : 'files'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(session.uploadedAt)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                    <ChevronDown
+                      className={`w-6 h-6 text-gray-600 transition-transform ${
+                        expandedSession === session.sessionNumber ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Session Content */}
+                  {expandedSession === session.sessionNumber && (
+                    <div className="p-6 bg-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {session.uploads.map((upload) => (
+                          <div key={upload._id} className="group relative bg-gray-50 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
+                            <div className="aspect-square overflow-hidden bg-gray-200">
+                              <img
+                                src={api.getImageUrl(upload.image_url)}
+                                alt="Invoice"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              />
+                            </div>
+                            <div className="p-4">
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Calendar className="w-4 h-4" />
+                                {formatDate(upload.uploaded_at)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

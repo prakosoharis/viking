@@ -59,7 +59,8 @@ const uploadSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   image_url: { type: String, required: true },
   uploaded_at: { type: Date, default: Date.now },
-  status: { type: String, default: 'completed' }
+  status: { type: String, default: 'completed' },
+  session_number: { type: Number, required: true, default: 1 }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -215,12 +216,17 @@ app.post('/api/uploads', (req, res, next) => {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    // Get last session number for this user
+    const lastUpload = await Upload.findOne({ user_id }).sort({ session_number: -1 });
+    const sessionNumber = lastUpload ? lastUpload.session_number + 1 : 1;
+
     const uploadPromises = req.files.map(file => {
       const imageUrl = `/assets/${file.filename}`;
       return new Upload({
         user_id,
         image_url: imageUrl,
-        status: 'completed'
+        status: 'completed',
+        session_number: sessionNumber
       }).save();
     });
 
@@ -229,7 +235,8 @@ app.post('/api/uploads', (req, res, next) => {
     res.json({
       success: true,
       count: uploads.length,
-      uploads
+      uploads,
+      session_number: sessionNumber
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -249,6 +256,10 @@ app.post('/api/uploads-base64', async (req, res) => {
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });
     }
+
+    // Get last session number for this user
+    const lastUpload = await Upload.findOne({ user_id }).sort({ session_number: -1 });
+    const sessionNumber = lastUpload ? lastUpload.session_number + 1 : 1;
 
     const uploadPromises = files.map(async (fileData, idx) => {
       // Extract base64 data (remove data:image/jpeg;base64, prefix)
@@ -270,7 +281,8 @@ app.post('/api/uploads-base64', async (req, res) => {
       return new Upload({
         user_id,
         image_url: imageUrl,
-        status: 'completed'
+        status: 'completed',
+        session_number: sessionNumber
       }).save();
     });
 
@@ -279,7 +291,8 @@ app.post('/api/uploads-base64', async (req, res) => {
     res.json({
       success: true,
       count: uploads.length,
-      uploads
+      uploads,
+      session_number: sessionNumber
     });
   } catch (error) {
     console.error('Base64 upload error:', error);
