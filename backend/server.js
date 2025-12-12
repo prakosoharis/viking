@@ -6,6 +6,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Email service
+const { sendInvoiceEmail } = require('./emailService');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -60,7 +63,16 @@ const uploadSchema = new mongoose.Schema({
   image_url: { type: String, required: true },
   uploaded_at: { type: Date, default: Date.now },
   status: { type: String, default: 'completed' },
-  session_number: { type: Number, required: true, default: 1 }
+  session_number: { type: Number, required: true, default: 1 },
+  // Email tracking
+  email_status: {
+    type: String,
+    enum: ['pending', 'sent', 'failed'],
+    default: 'pending'
+  },
+  email_sent_at: { type: Date },
+  email_error: { type: String },
+  email_id: { type: String } // Brevo email ID for tracking
 });
 
 const User = mongoose.model('User', userSchema);
@@ -232,6 +244,39 @@ app.post('/api/uploads', (req, res, next) => {
 
     const uploads = await Promise.all(uploadPromises);
 
+    // Send email to Tripletex (async, don't wait)
+    const user = await User.findById(user_id);
+    if (user) {
+      sendInvoiceEmail(user, uploads, sessionNumber)
+        .then(async (result) => {
+          if (result.success) {
+            // Update email status to 'sent'
+            await Upload.updateMany(
+              { user_id, session_number: sessionNumber },
+              {
+                email_status: 'sent',
+                email_sent_at: new Date(),
+                email_id: result.messageId
+              }
+            );
+            console.log(`✅ Email status updated: sent (ID: ${result.messageId})`);
+          } else {
+            // Update email status to 'failed'
+            await Upload.updateMany(
+              { user_id, session_number: sessionNumber },
+              {
+                email_status: 'failed',
+                email_error: result.error
+              }
+            );
+            console.error(`❌ Email status updated: failed (${result.error})`);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ Email send error:', error);
+        });
+    }
+
     res.json({
       success: true,
       count: uploads.length,
@@ -287,6 +332,39 @@ app.post('/api/uploads-base64', async (req, res) => {
     });
 
     const uploads = await Promise.all(uploadPromises);
+
+    // Send email to Tripletex (async, don't wait)
+    const user = await User.findById(user_id);
+    if (user) {
+      sendInvoiceEmail(user, uploads, sessionNumber)
+        .then(async (result) => {
+          if (result.success) {
+            // Update email status to 'sent'
+            await Upload.updateMany(
+              { user_id, session_number: sessionNumber },
+              {
+                email_status: 'sent',
+                email_sent_at: new Date(),
+                email_id: result.messageId
+              }
+            );
+            console.log(`✅ Email status updated: sent (ID: ${result.messageId})`);
+          } else {
+            // Update email status to 'failed'
+            await Upload.updateMany(
+              { user_id, session_number: sessionNumber },
+              {
+                email_status: 'failed',
+                email_error: result.error
+              }
+            );
+            console.error(`❌ Email status updated: failed (${result.error})`);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ Email send error:', error);
+        });
+    }
 
     res.json({
       success: true,

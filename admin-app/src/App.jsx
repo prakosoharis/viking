@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check, UserPlus, Edit2, Trash2, Search, Mail, AlertCircle, CheckCircle } from 'lucide-react';
+import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check, UserPlus, Edit2, Trash2, Search, Mail, AlertCircle, CheckCircle, Send, Clock } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import api from './api';
@@ -1277,6 +1277,26 @@ const Dashboard = ({ onLogout }) => {
                                           <Calendar className="w-3 h-3" />
                                           {formatDate(session.uploadedAt)}
                                         </span>
+
+                                        {/* Email Status Badge */}
+                                        {session.uploads[0].email_status === 'sent' && (
+                                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-semibold">
+                                            <Send className="w-2.5 h-2.5" />
+                                            Email Sent
+                                          </span>
+                                        )}
+                                        {session.uploads[0].email_status === 'failed' && (
+                                          <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-semibold">
+                                            <AlertCircle className="w-2.5 h-2.5" />
+                                            Failed
+                                          </span>
+                                        )}
+                                        {session.uploads[0].email_status === 'pending' && (
+                                          <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-semibold">
+                                            <Clock className="w-2.5 h-2.5" />
+                                            Sending
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     <ChevronDown

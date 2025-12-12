@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -603,6 +603,26 @@ const Dashboard = ({ user, onLogout }) => {
                             <Calendar className="w-4 h-4" />
                             {formatDate(session.uploadedAt)}
                           </span>
+
+                          {/* Email Status Badge */}
+                          {session.uploads[0].email_status === 'sent' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
+                              <Send className="w-3 h-3" />
+                              Email Sent
+                            </span>
+                          )}
+                          {session.uploads[0].email_status === 'failed' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold">
+                              <AlertCircle className="w-3 h-3" />
+                              Email Failed
+                            </span>
+                          )}
+                          {session.uploads[0].email_status === 'pending' && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-xs font-semibold">
+                              <Clock className="w-3 h-3" />
+                              Sending...
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
