@@ -1079,48 +1079,96 @@ const Dashboard = ({ onLogout }) => {
           ) : (
             <div className="space-y-4">
               {usersWithUploads.map((user) => {
-                const isExpanded = expandedUser === user.id;
+                const isExpanded = expandedUser === user._id;
 
                 return (
                   <div
-                    key={user.id}
+                    key={user._id}
                     className="border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-purple-300 transition-all"
                   >
                     {/* User Header */}
                     <button
-                      onClick={() => toggleUser(user.id)}
-                      className="w-full px-6 py-5 flex items-center justify-between hover:bg-gray-50 transition-all"
+                      onClick={() => toggleUser(user._id)}
+                      className="w-full px-6 py-5 hover:bg-gray-50 transition-all"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Phone className="w-7 h-7 text-purple-600" />
-                        </div>
-                        <div className="text-left">
-                          <h3 className="font-bold text-gray-900 text-lg">
-                            {user.phone_number}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {user.uploadCount} {user.uploadCount === 1 ? 'upload' : 'uploads'}
-                          </p>
-                        </div>
-                      </div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            {user.company_name ? (
+                              <User className="w-7 h-7 text-purple-600" />
+                            ) : (
+                              <Phone className="w-7 h-7 text-purple-600" />
+                            )}
+                          </div>
+                          <div className="text-left flex-1 min-w-0">
+                            {/* Company Name or Phone as primary */}
+                            <h3 className="font-bold text-gray-900 text-lg truncate">
+                              {user.company_name || user.phone_number}
+                            </h3>
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-right hidden sm:block">
-                          <p className="text-sm text-gray-500">Joined</p>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {new Date(user.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
+                            {/* User Details Grid */}
+                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                              {/* Phone */}
+                              {user.company_name && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="truncate">{user.phone_number}</span>
+                                </div>
+                              )}
+
+                              {/* Email */}
+                              {user.company_email && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="truncate">{user.company_email}</span>
+                                </div>
+                              )}
+
+                              {/* Org Nr */}
+                              {user.org_nr && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <span className="font-semibold">Org Nr:</span>
+                                  <span className="truncate">{user.org_nr}</span>
+                                </div>
+                              )}
+
+                              {/* Upload Count */}
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span>{user.uploadCount} {user.uploadCount === 1 ? 'upload' : 'uploads'}</span>
+                              </div>
+                            </div>
+
+                            {/* Address */}
+                            {user.address && (
+                              <div className="flex items-start gap-2 text-sm text-gray-600 mt-2">
+                                <Calendar className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                <span className="truncate">
+                                  {user.address}
+                                  {user.zip_code && `, ${user.zip_code}`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-6 h-6 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-6 h-6 text-gray-400" />
-                        )}
+
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          <div className="text-right hidden lg:block">
+                            <p className="text-xs text-gray-500">Joined</p>
+                            <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                              {new Date(user.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="w-6 h-6 text-gray-400 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-6 h-6 text-gray-400 flex-shrink-0" />
+                          )}
+                        </div>
                       </div>
                     </button>
 
@@ -1138,7 +1186,7 @@ const Dashboard = ({ onLogout }) => {
 
                             return (
                               <div
-                                key={upload.id}
+                                key={upload._id}
                                 className={`group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all ${isSelected ? 'ring-4 ring-purple-500' : ''}`}
                               >
                                 {/* Checkbox */}
