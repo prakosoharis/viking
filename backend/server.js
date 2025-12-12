@@ -45,7 +45,14 @@ mongoose.connect(MONGODB_URI)
 const userSchema = new mongoose.Schema({
   phone_number: { type: String, required: true, unique: true },
   role: { type: String, default: 'user' },
-  created_at: { type: Date, default: Date.now }
+  created_at: { type: Date, default: Date.now },
+  // Registration fields
+  company_name: { type: String },
+  org_nr: { type: String },
+  address: { type: String },
+  zip_code: { type: String },
+  company_email: { type: String },
+  updated_at: { type: Date, default: Date.now }
 });
 
 const uploadSchema = new mongoose.Schema({
@@ -89,6 +96,55 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit (untuk HEIC/RAW images)
 });
 
+// ==================== VALIDATION HELPERS ====================
+
+// Email validation regex
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Phone validation (numeric or starts with +)
+const isValidPhone = (phone) => {
+  const phoneRegex = /^[\+]?[0-9\s\-\(\)]+$/;
+  return phoneRegex.test(phone);
+};
+
+// Validation middleware for user creation/update
+const validateUserData = (data) => {
+  const errors = [];
+
+  if (!data.company_name || !data.company_name.trim()) {
+    errors.push('Company name is required');
+  }
+
+  if (!data.org_nr || !data.org_nr.trim()) {
+    errors.push('Organization number is required');
+  }
+
+  if (!data.address || !data.address.trim()) {
+    errors.push('Address is required');
+  }
+
+  if (!data.zip_code || !data.zip_code.trim()) {
+    errors.push('Zip code is required');
+  }
+
+  if (!data.company_email || !data.company_email.trim()) {
+    errors.push('Company email is required');
+  } else if (!isValidEmail(data.company_email)) {
+    errors.push('Invalid email format');
+  }
+
+  if (!data.phone_number || !data.phone_number.trim()) {
+    errors.push('Phone number is required');
+  } else if (!isValidPhone(data.phone_number)) {
+    errors.push('Phone number must be numeric or start with +');
+  }
+
+  return errors;
+};
+
 // ==================== ROUTES ====================
 
 // Health Check
@@ -98,7 +154,7 @@ app.get('/api/health', (req, res) => {
 
 // ==================== USER ROUTES ====================
 
-// Get or create user by phone number
+// User login - CHECK ONLY (no auto-creation)
 app.post('/api/users/login', async (req, res) => {
   try {
     const { phone_number } = req.body;
@@ -107,14 +163,12 @@ app.post('/api/users/login', async (req, res) => {
       return res.status(400).json({ error: 'Phone number is required' });
     }
 
-    let user = await User.findOne({ phone_number });
+    const user = await User.findOne({ phone_number });
 
     if (!user) {
-      user = new User({
-        phone_number,
-        role: 'user'
+      return res.status(404).json({
+        error: 'Phone number not registered. Please contact your administrator to create an account.'
       });
-      await user.save();
     }
 
     res.json(user);
@@ -283,6 +337,136 @@ app.get('/api/admin/users-with-uploads', async (req, res) => {
   } catch (error) {
     console.error('Get users with uploads error:', error);
     res.status(500).json({ error: 'Server error fetching user data' });
+  }
+});
+
+// ==================== ADMIN USER MANAGEMENT ROUTES ====================
+
+// GET /api/admin/users - Get all users with optional search
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    let query = { role: 'user' };
+
+    if (search && search.trim()) {
+      // Search by company name or phone number
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { company_name: searchRegex },
+        { phone_number: searchRegex }
+      ];
+    }
+
+    const users = await User.find(query).sort({ created_at: -1 });
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Server error fetching users' });
+  }
+});
+
+// POST /api/admin/users - Create new user (registration)
+app.post('/api/admin/users', async (req, res) => {
+  try {
+    const { company_name, org_nr, address, zip_code, company_email, phone_number } = req.body;
+
+    // Validate all fields
+    const errors = validateUserData(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+
+    // Check if phone number already exists
+    const existingUser = await User.findOne({ phone_number });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Phone number already registered' });
+    }
+
+    // Create new user
+    const newUser = new User({
+      phone_number,
+      company_name,
+      org_nr,
+      address,
+      zip_code,
+      company_email,
+      role: 'user',
+      created_at: new Date(),
+      updated_at: new Date()
+    });
+
+    await newUser.save();
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Server error creating user' });
+  }
+});
+
+// PUT /api/admin/users/:id - Update user
+app.put('/api/admin/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { company_name, org_nr, address, zip_code, company_email, phone_number } = req.body;
+
+    // Validate all fields
+    const errors = validateUserData(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+
+    // Check if user exists
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if phone number is being changed to one that already exists
+    if (phone_number !== user.phone_number) {
+      const existingUser = await User.findOne({ phone_number });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Phone number already registered' });
+      }
+    }
+
+    // Update user
+    user.company_name = company_name;
+    user.org_nr = org_nr;
+    user.address = address;
+    user.zip_code = zip_code;
+    user.company_email = company_email;
+    user.phone_number = phone_number;
+    user.updated_at = new Date();
+
+    await user.save();
+    res.json(user);
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Server error updating user' });
+  }
+});
+
+// DELETE /api/admin/users/:id - Delete user
+app.delete('/api/admin/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete user's uploads first (cascade delete)
+    await Upload.deleteMany({ user_id: id });
+
+    // Delete user
+    await User.findByIdAndDelete(id);
+
+    res.json({ message: 'User and associated uploads deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Server error deleting user' });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check } from 'lucide-react';
+import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check, UserPlus, Edit2, Trash2, Search, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import api from './api';
@@ -195,6 +195,358 @@ const ImagePreview = ({ imageUrl, isOpen, onClose }) => {
   );
 };
 
+// User Form Modal Component
+const UserFormModal = ({ isOpen, onClose, onSubmit, initialData = null, isEdit = false }) => {
+  const [formData, setFormData] = useState({
+    company_name: '',
+    org_nr: '',
+    address: '',
+    zip_code: '',
+    company_email: '',
+    phone_number: ''
+  });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load initial data for edit mode
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        company_name: initialData.company_name || '',
+        org_nr: initialData.org_nr || '',
+        address: initialData.address || '',
+        zip_code: initialData.zip_code || '',
+        company_email: initialData.company_email || '',
+        phone_number: initialData.phone_number || ''
+      });
+    } else {
+      // Reset form when not editing
+      setFormData({
+        company_name: '',
+        org_nr: '',
+        address: '',
+        zip_code: '',
+        company_email: '',
+        phone_number: ''
+      });
+      setErrors({});
+    }
+  }, [initialData, isOpen]);
+
+  // Validation
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = 'Company name is required';
+    }
+
+    if (!formData.org_nr.trim()) {
+      newErrors.org_nr = 'Organization number is required';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.zip_code.trim()) {
+      newErrors.zip_code = 'Zip code is required';
+    }
+
+    if (!formData.company_email.trim()) {
+      newErrors.company_email = 'Company email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.company_email)) {
+      newErrors.company_email = 'Invalid email format';
+    }
+
+    if (!formData.phone_number.trim()) {
+      newErrors.phone_number = 'Phone number is required';
+    } else if (!/^[\+]?[0-9\s\-\(\)]+$/.test(formData.phone_number)) {
+      newErrors.phone_number = 'Phone number must be numeric or start with +';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+      // Reset form on success
+      setFormData({
+        company_name: '',
+        org_nr: '',
+        address: '',
+        zip_code: '',
+        company_email: '',
+        phone_number: ''
+      });
+      setErrors({});
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 rounded-t-3xl z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {isEdit ? 'Edit User' : 'Register New User'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {isEdit ? 'Update user information' : 'Fill in all required fields'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <X className="w-6 h-6 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+          {/* Company Name */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Company Name *
+            </label>
+            <input
+              type="text"
+              value={formData.company_name}
+              onChange={(e) => handleChange('company_name', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.company_name
+                ? 'border-red-300 focus:border-red-500'
+                : 'border-gray-200 focus:border-purple-500'
+                }`}
+              placeholder="Vikings Corp"
+            />
+            {errors.company_name && (
+              <p className="text-red-600 text-sm mt-1">{errors.company_name}</p>
+            )}
+          </div>
+
+          {/* Organization Number */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Organization Number *
+            </label>
+            <input
+              type="text"
+              value={formData.org_nr}
+              onChange={(e) => handleChange('org_nr', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.org_nr
+                ? 'border-red-300 focus:border-red-500'
+                : 'border-gray-200 focus:border-purple-500'
+                }`}
+              placeholder="123456789"
+            />
+            {errors.org_nr && (
+              <p className="text-red-600 text-sm mt-1">{errors.org_nr}</p>
+            )}
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Address *
+            </label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => handleChange('address', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.address
+                ? 'border-red-300 focus:border-red-500'
+                : 'border-gray-200 focus:border-purple-500'
+                }`}
+              placeholder="123 Viking Street"
+            />
+            {errors.address && (
+              <p className="text-red-600 text-sm mt-1">{errors.address}</p>
+            )}
+          </div>
+
+          {/* Zip Code */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Zip Code *
+            </label>
+            <input
+              type="text"
+              value={formData.zip_code}
+              onChange={(e) => handleChange('zip_code', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.zip_code
+                ? 'border-red-300 focus:border-red-500'
+                : 'border-gray-200 focus:border-purple-500'
+                }`}
+              placeholder="12345"
+            />
+            {errors.zip_code && (
+              <p className="text-red-600 text-sm mt-1">{errors.zip_code}</p>
+            )}
+          </div>
+
+          {/* Company Email */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Company Email *
+            </label>
+            <input
+              type="email"
+              value={formData.company_email}
+              onChange={(e) => handleChange('company_email', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.company_email
+                ? 'border-red-300 focus:border-red-500'
+                : 'border-gray-200 focus:border-purple-500'
+                }`}
+              placeholder="contact@vikings.com"
+            />
+            {errors.company_email && (
+              <p className="text-red-600 text-sm mt-1">{errors.company_email}</p>
+            )}
+          </div>
+
+          {/* Phone Number */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Phone Number (Login ID) *
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="tel"
+                value={formData.phone_number}
+                onChange={(e) => handleChange('phone_number', e.target.value)}
+                className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${errors.phone_number
+                  ? 'border-red-300 focus:border-red-500'
+                  : 'border-gray-200 focus:border-purple-500'
+                  }`}
+                placeholder="+62 812 3456 7890"
+              />
+            </div>
+            {errors.phone_number && (
+              <p className="text-red-600 text-sm mt-1">{errors.phone_number}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              This will be used as the login identifier
+            </p>
+          </div>
+
+          {/* Submit Error */}
+          {errors.submit && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+              {errors.submit}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 px-6 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-3 px-6 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold shadow-lg shadow-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : (isEdit ? 'Update User' : 'Create User')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Delete Confirmation Dialog Component
+const DeleteConfirmDialog = ({ isOpen, onClose, onConfirm, userName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-scale">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Delete User?</h2>
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete <span className="font-semibold">{userName}</span>?
+            This will also delete all their uploads. This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 px-6 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 py-3 px-6 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Success Toast Notification Component
+const SuccessToast = ({ message, isOpen, onClose }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(onClose, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-slide-up">
+      <div className="bg-green-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+        <CheckCircle className="w-6 h-6" />
+        <p className="font-semibold">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 // Login Component
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -280,14 +632,32 @@ const LoginScreen = ({ onLogin }) => {
 
 // Admin Dashboard Component
 const Dashboard = ({ onLogout }) => {
+  // Existing state
   const [usersWithUploads, setUsersWithUploads] = useState([]);
   const [expandedUser, setExpandedUser] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
 
+  // User management state
+  const [allUsers, setAllUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('uploads');
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadAllUsers();
+    }
+  }, [activeTab, searchQuery]);
 
   const loadData = async () => {
     try {
@@ -296,6 +666,55 @@ const Dashboard = ({ onLogout }) => {
     } catch (error) {
       console.error('Failed to load data:', error);
       alert('Failed to load user data. Please try again.');
+    }
+  };
+
+  const loadAllUsers = async () => {
+    try {
+      const users = await api.getAllUsers(searchQuery);
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      alert('Failed to load users. Please try again.');
+    }
+  };
+
+  const handleCreateUser = async (userData) => {
+    try {
+      await api.createUser(userData);
+      setSuccessMessage('User registered successfully!');
+      setShowSuccess(true);
+      setShowUserForm(false);
+      loadAllUsers();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleEditUser = async (userData) => {
+    try {
+      await api.updateUser(editingUser._id, userData);
+      setSuccessMessage('User updated successfully!');
+      setShowSuccess(true);
+      setShowUserForm(false);
+      setEditingUser(null);
+      loadAllUsers();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    try {
+      await api.deleteUser(deletingUser._id);
+      setSuccessMessage('User deleted successfully!');
+      setShowSuccess(true);
+      setShowDeleteDialog(false);
+      setDeletingUser(null);
+      loadAllUsers();
+      loadData();
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -444,8 +863,150 @@ const Dashboard = ({ onLogout }) => {
         </div>
       </header>
 
-      {/* Download Toolbar */}
-      {usersWithUploads.length > 0 && (
+      {/* Tab Navigation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+        <div className="bg-white rounded-2xl shadow-md p-2 flex gap-2">
+          <button
+            onClick={() => setActiveTab('uploads')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all ${activeTab === 'uploads'
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
+          >
+            Upload Management
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all ${activeTab === 'users'
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
+          >
+            User Management
+          </button>
+        </div>
+      </div>
+
+      {/* User Management Panel */}
+      {activeTab === 'users' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up">
+            {/* Header with Search and Add Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Registered Users</h2>
+              <div className="flex gap-3">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by company or phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingUser(null);
+                    setShowUserForm(true);
+                  }}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold shadow-lg flex items-center gap-2 whitespace-nowrap"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  <span className="hidden sm:inline">Add User</span>
+                </button>
+              </div>
+            </div>
+
+            {/* User List */}
+            {allUsers.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <User className="w-10 h-10 text-gray-400" />
+                </div>
+                <p className="text-gray-600 text-lg">
+                  {searchQuery ? 'No users found matching your search' : 'No registered users yet'}
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {!searchQuery && 'Click "Add User" to register the first user'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Company</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Phone</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Email</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Address</th>
+                      <th className="text-left py-4 px-4 font-semibold text-gray-700">Org Nr</th>
+                      <th className="text-right py-4 px-4 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers.map((user) => (
+                      <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="font-semibold text-gray-900">{user.company_name || '-'}</div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-700">{user.phone_number}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-700">{user.company_email || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700">
+                            {user.address || '-'}
+                            {user.zip_code && <span className="text-gray-500 ml-2">{user.zip_code}</span>}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="text-gray-700">{user.org_nr || '-'}</span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingUser(user);
+                                setShowUserForm(true);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeletingUser(user);
+                                setShowDeleteDialog(true);
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Download Toolbar - only show on uploads tab */}
+      {activeTab === 'uploads' && usersWithUploads.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl shadow-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -496,7 +1057,9 @@ const Dashboard = ({ onLogout }) => {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      {/* Upload Management Content - only show on uploads tab */}
+      {activeTab === 'uploads' && (
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-gray-900">Users with Uploads</h2>
@@ -638,6 +1201,35 @@ const Dashboard = ({ onLogout }) => {
           )}
         </div>
       </main>
+      )}
+
+      {/* Modals */}
+      <UserFormModal
+        isOpen={showUserForm}
+        onClose={() => {
+          setShowUserForm(false);
+          setEditingUser(null);
+        }}
+        onSubmit={editingUser ? handleEditUser : handleCreateUser}
+        initialData={editingUser}
+        isEdit={!!editingUser}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setDeletingUser(null);
+        }}
+        onConfirm={handleDeleteUser}
+        userName={deletingUser?.company_name || deletingUser?.phone_number || ''}
+      />
+
+      <SuccessToast
+        message={successMessage}
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+      />
 
       <ImagePreview
         imageUrl={previewImage}

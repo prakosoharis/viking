@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -148,6 +148,9 @@ const LoginScreen = ({ onLogin }) => {
 
 // Main Dashboard Component
 const Dashboard = ({ user, onLogout }) => {
+  const MAX_FILES = 10;
+  const MIN_FILES = 1;
+
   const [uploads, setUploads] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -168,18 +171,61 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  // Not needed anymore - validation done during processing
-
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = validateFiles(e.dataTransfer.files);
-    setSelectedFiles(files);
+
+    const files = e.dataTransfer.files;
+
+    // Validate file count
+    if (files.length > MAX_FILES) {
+      alert(`You can only upload a maximum of ${MAX_FILES} files at once.\nPlease select ${MAX_FILES} files or fewer.`);
+      return;
+    }
+
+    if (files.length < MIN_FILES) {
+      alert(`Please select at least ${MIN_FILES} file to upload.`);
+      return;
+    }
+
+    // Process files
+    const processedFiles = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const fileData = {
+          name: file.name,
+          type: file.type || 'image/jpeg',
+          size: file.size,
+          arrayBuffer: arrayBuffer,
+          fromCamera: false
+        };
+        processedFiles.push(fileData);
+      } catch (error) {
+        console.error(`Failed to process file ${i}:`, error);
+      }
+    }
+
+    setSelectedFiles(processedFiles);
   };
 
   const handleFileSelect = async (e) => {
     const files = e.target.files;
     const inputId = e.target.id; // camera-input or gallery-input
+
+    // Validate file count
+    if (files.length > MAX_FILES) {
+      alert(`You can only upload a maximum of ${MAX_FILES} files at once.\nPlease select ${MAX_FILES} files or fewer.`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    if (files.length < MIN_FILES) {
+      alert(`Please select at least ${MIN_FILES} file to upload.`);
+      e.target.value = ''; // Reset input
+      return;
+    }
 
     const processedFiles = [];
     for (let i = 0; i < files.length; i++) {
@@ -204,10 +250,20 @@ const Dashboard = ({ user, onLogout }) => {
     }
 
     setSelectedFiles(processedFiles);
+    e.target.value = ''; // Reset input for re-selection
   };
 
   const handleUpload = async () => {
-    if (selectedFiles.length === 0) return;
+    // Validate file count
+    if (selectedFiles.length === 0) {
+      alert('Please select at least 1 file to upload.');
+      return;
+    }
+
+    if (selectedFiles.length > MAX_FILES) {
+      alert(`You can only upload a maximum of ${MAX_FILES} files at once.`);
+      return;
+    }
 
     try {
       const result = await api.uploadImages(user._id, selectedFiles);
@@ -222,6 +278,10 @@ const Dashboard = ({ user, onLogout }) => {
       console.error('Upload failed:', error);
       alert(`Failed to upload images: ${error.message || 'Please try again'}`);
     }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setSelectedFiles(selectedFiles.filter((_, index) => index !== indexToRemove));
   };
 
   const formatDate = (date) => {
@@ -261,6 +321,99 @@ const Dashboard = ({ user, onLogout }) => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {/* User Profile Section */}
+        {(user.company_name || user.company_email || user.address) && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-xl p-6 sm:p-8 mb-8 animate-slide-up border-2 border-blue-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
+                <p className="text-sm text-gray-600">Account Information</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Company Name */}
+              {user.company_name && (
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Company Name</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{user.company_name}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Organization Number */}
+              {user.org_nr && (
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Hash className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Org Number</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{user.org_nr}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Phone Number */}
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone Number</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{user.phone_number}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email */}
+              {user.company_email && (
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{user.company_email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Address */}
+              {user.address && (
+                <div className="bg-white rounded-xl p-4 shadow-sm md:col-span-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {user.address}
+                        {user.zip_code && <span className="text-gray-600 ml-2">• {user.zip_code}</span>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Upload Section */}
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-8 animate-slide-up">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Images</h2>
@@ -302,8 +455,11 @@ const Dashboard = ({ user, onLogout }) => {
             <h3 className="text-xl font-bold text-gray-900 mb-2">
               Upload Images
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-2">
               Take a photo or choose from gallery
+            </p>
+            <p className="text-sm text-blue-600 font-semibold mb-6">
+              Min: {MIN_FILES} file • Max: {MAX_FILES} files per upload
             </p>
 
             <div className="flex gap-3 justify-center flex-wrap">
@@ -332,12 +488,22 @@ const Dashboard = ({ user, onLogout }) => {
           {/* Selected Files */}
           {selectedFiles.length > 0 && (
             <div className="mt-6 animate-slide-up">
-              <h3 className="font-bold text-gray-900 mb-4">
-                Selected ({selectedFiles.length})
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-900">
+                  Selected Files
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold ${selectedFiles.length >= MAX_FILES ? 'text-red-600' : 'text-blue-600'}`}>
+                    {selectedFiles.length} / {MAX_FILES}
+                  </span>
+                  {selectedFiles.length >= MAX_FILES && (
+                    <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">Max reached</span>
+                  )}
+                </div>
+              </div>
               <div className="space-y-3 mb-6">
                 {Array.from(selectedFiles).map((file, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4">
+                  <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 group hover:bg-gray-100 transition-colors">
                     <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-sm font-medium text-gray-700 truncate flex-1">
                       {file.name}
@@ -345,15 +511,30 @@ const Dashboard = ({ user, onLogout }) => {
                     <span className="text-sm text-gray-500">
                       {(file.size / 1024).toFixed(1)} KB
                     </span>
+                    <button
+                      onClick={() => removeFile(idx)}
+                      className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Remove file"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
               </div>
-              <button
-                onClick={handleUpload}
-                className="w-full py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-lg shadow-lg shadow-green-200"
-              >
-                Upload {selectedFiles.length} {selectedFiles.length === 1 ? 'File' : 'Files'}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSelectedFiles([])}
+                  className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all font-semibold"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={handleUpload}
+                  className="flex-1 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-lg shadow-lg shadow-green-200"
+                >
+                  Upload {selectedFiles.length} {selectedFiles.length === 1 ? 'File' : 'Files'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -422,7 +603,16 @@ function App() {
       localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
     } catch (error) {
       console.error('Login failed:', error);
-      alert('Login failed. Please try again.');
+
+      // Check if it's a "user not found" error
+      if (error.message && error.message.includes('not registered')) {
+        alert(
+          'Phone number not registered.\n\n' +
+          'Please contact your administrator to create an account for you.'
+        );
+      } else {
+        alert('Login failed. Please try again.');
+      }
     }
   };
 

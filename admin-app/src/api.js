@@ -12,6 +12,69 @@ class ApiService {
     return response.json();
   }
 
+  // User management endpoints
+  async getAllUsers(searchQuery = '') {
+    const url = searchQuery
+      ? `${API_BASE_URL}/admin/users?search=${encodeURIComponent(searchQuery)}`
+      : `${API_BASE_URL}/admin/users`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+    return response.json();
+  }
+
+  async createUser(userData) {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create user');
+    }
+
+    return data;
+  }
+
+  async updateUser(userId, userData) {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update user');
+    }
+
+    return data;
+  }
+
+  async deleteUser(userId) {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete user');
+    }
+
+    return data;
+  }
+
   // Helper to get full image URL
   getImageUrl(imagePath) {
     if (!imagePath) return '';
