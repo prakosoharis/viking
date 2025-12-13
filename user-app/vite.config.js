@@ -23,6 +23,7 @@ export default defineConfig({
       '127.0.0.1',
       'deluwang.online',
       'www.deluwang.online',
+      'clickz.co.no',
       // Tambahkan IP server jika perlu
       // 'your-server-ip'
     ]
