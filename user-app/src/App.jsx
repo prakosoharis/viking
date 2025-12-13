@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock, FileText } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -469,7 +469,7 @@ const Dashboard = ({ user, onLogout }) => {
               type="file"
               id="gallery-input"
               multiple
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -528,24 +528,32 @@ const Dashboard = ({ user, onLogout }) => {
                 </div>
               </div>
               <div className="space-y-3 mb-6">
-                {Array.from(selectedFiles).map((file, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 group hover:bg-gray-100 transition-colors">
-                    <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    <span className="text-sm font-medium text-gray-700 truncate flex-1">
-                      {file.name}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </span>
-                    <button
-                      onClick={() => removeFile(idx)}
-                      className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                      title="Remove file"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                {Array.from(selectedFiles).map((file, idx) => {
+                  const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+                  return (
+                    <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 group hover:bg-gray-100 transition-colors">
+                      {isPDF ? (
+                        <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      )}
+                      <span className="text-sm font-medium text-gray-700 truncate flex-1">
+                        {file.name}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </span>
+                      <button
+                        onClick={() => removeFile(idx)}
+                        className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        title="Remove file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex gap-3">
                 <button
@@ -637,23 +645,34 @@ const Dashboard = ({ user, onLogout }) => {
                   {expandedSession === session.sessionNumber && (
                     <div className="p-6 bg-white">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {session.uploads.map((upload) => (
-                          <div key={upload._id} className="group relative bg-gray-50 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
-                            <div className="aspect-square overflow-hidden bg-gray-200">
-                              <img
-                                src={api.getImageUrl(upload.image_url)}
-                                alt="Invoice"
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Calendar className="w-4 h-4" />
-                                {formatDate(upload.uploaded_at)}
+                        {session.uploads.map((upload) => {
+                          const isPDF = upload.image_url.toLowerCase().endsWith('.pdf');
+
+                          return (
+                            <div key={upload._id} className="group relative bg-gray-50 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
+                              <div className="aspect-square overflow-hidden bg-gray-200 flex items-center justify-center">
+                                {isPDF ? (
+                                  <div className="flex flex-col items-center justify-center p-8">
+                                    <FileText className="w-20 h-20 text-red-600 mb-2" />
+                                    <span className="text-sm text-gray-700 font-semibold text-center">PDF Document</span>
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={api.getImageUrl(upload.image_url)}
+                                    alt="Invoice"
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                  />
+                                )}
+                              </div>
+                              <div className="p-4">
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Calendar className="w-4 h-4" />
+                                  {formatDate(upload.uploaded_at)}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

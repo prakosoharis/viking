@@ -91,15 +91,19 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   // Accept all image formats (JPEG, PNG, HEIC, HEIF, WebP, AVIF, etc.)
+  // Also accept PDF files
   // Also accept files with empty mimetype (iOS camera sometimes sends empty type)
   const isImage = file.mimetype.startsWith('image/') ||
                   file.mimetype === '' ||
                   /\.(jpe?g|png|gif|bmp|webp|heic|heif|avif)$/i.test(file.originalname);
 
-  if (isImage) {
+  const isPDF = file.mimetype === 'application/pdf' ||
+                /\.pdf$/i.test(file.originalname);
+
+  if (isImage || isPDF) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only image files allowed'), false);
+    cb(new Error('Invalid file type. Only image and PDF files allowed'), false);
   }
 };
 
