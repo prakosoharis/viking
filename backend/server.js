@@ -12,7 +12,7 @@ const { sendInvoiceEmail } = require('./emailService');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Middleware - CORS FIRST
 // CORS configuration with explicit options
 app.use(cors({
   origin: '*', // Allow all origins for now
@@ -28,13 +28,24 @@ app.options('*', cors());
 app.use(express.json({ limit: '100mb' })); // Increase for Base64 uploads
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
-// Serve static files (uploaded images)
-app.use('/assets', express.static(path.join(__dirname, 'uploads')));
+// Serve static files (uploaded images) with CORS headers
+app.use('/assets', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Ensure client-advertisements directory exists
+const clientAdsDir = path.join(__dirname, 'uploads', 'client-advertisements');
+if (!fs.existsSync(clientAdsDir)) {
+  fs.mkdirSync(clientAdsDir, { recursive: true });
 }
 
 // MongoDB Connection
@@ -78,6 +89,14 @@ const uploadSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Upload = mongoose.model('Upload', uploadSchema);
 
+// Client Advertisement Schema
+const clientAdvertisementSchema = new mongoose.Schema({
+  image_url: { type: String, required: true },
+  uploaded_at: { type: Date, default: Date.now }
+});
+
+const ClientAdvertisement = mongoose.model('ClientAdvertisement', clientAdvertisementSchema);
+
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -111,6 +130,36 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit (untuk HEIC/RAW images)
+});
+
+// Configure Multer for client advertisement uploads (separate storage)
+const clientAdStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, clientAdsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// Only accept images for client advertisements
+const clientAdFileFilter = (req, file, cb) => {
+  const isImage = file.mimetype.startsWith('image/') ||
+                  file.mimetype === '' ||
+                  /\.(jpe?g|png|gif|bmp|webp|heic|heif|avif)$/i.test(file.originalname);
+
+  if (isImage) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only image files allowed'), false);
+  }
+};
+
+const clientAdUpload = multer({
+  storage: clientAdStorage,
+  fileFilter: clientAdFileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for logos
 });
 
 // ==================== VALIDATION HELPERS ====================
@@ -562,6 +611,94 @@ app.delete('/api/admin/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Server error deleting user' });
+  }
+});
+
+// ==================== ADMIN CLIENT ADVERTISEMENT ROUTES ====================
+
+// POST /api/admin/client-advertisements - Upload client advertisement logos
+app.post('/api/admin/client-advertisements', (req, res, next) => {
+  clientAdUpload.array('logos', 10)(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err.message);
+      return res.status(400).json({
+        error: err.message || 'File upload error',
+        code: err.code
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const uploadPromises = req.files.map(file => {
+      const imageUrl = `/assets/client-advertisements/${file.filename}`;
+      return new ClientAdvertisement({
+        image_url: imageUrl
+      }).save();
+    });
+
+    const advertisements = await Promise.all(uploadPromises);
+
+    res.json({
+      success: true,
+      count: advertisements.length,
+      advertisements
+    });
+  } catch (error) {
+    console.error('Upload client advertisement error:', error);
+    res.status(500).json({ error: 'Server error during upload' });
+  }
+});
+
+// GET /api/admin/client-advertisements - Get all client advertisements (for admin)
+app.get('/api/admin/client-advertisements', async (req, res) => {
+  try {
+    const advertisements = await ClientAdvertisement.find().sort({ uploaded_at: -1 });
+    res.json(advertisements);
+  } catch (error) {
+    console.error('Get client advertisements error:', error);
+    res.status(500).json({ error: 'Server error fetching advertisements' });
+  }
+});
+
+// GET /api/client-advertisements - Get all client advertisements (public, for user app)
+app.get('/api/client-advertisements', async (req, res) => {
+  try {
+    const advertisements = await ClientAdvertisement.find().sort({ uploaded_at: -1 });
+    res.json(advertisements);
+  } catch (error) {
+    console.error('Get client advertisements error:', error);
+    res.status(500).json({ error: 'Server error fetching advertisements' });
+  }
+});
+
+// DELETE /api/admin/client-advertisements/:id - Delete a client advertisement
+app.delete('/api/admin/client-advertisements/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const advertisement = await ClientAdvertisement.findById(id);
+    if (!advertisement) {
+      return res.status(404).json({ error: 'Advertisement not found' });
+    }
+
+    // Delete file from filesystem
+    const filePath = path.join(__dirname, 'uploads', 'client-advertisements', path.basename(advertisement.image_url));
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Delete from database
+    await ClientAdvertisement.findByIdAndDelete(id);
+
+    res.json({ message: 'Advertisement deleted successfully' });
+  } catch (error) {
+    console.error('Delete client advertisement error:', error);
+    res.status(500).json({ error: 'Server error deleting advertisement' });
   }
 });
 

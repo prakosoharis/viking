@@ -75,6 +75,51 @@ class ApiService {
     return data;
   }
 
+  // Client Advertisement endpoints
+  async getClientAdvertisements() {
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch client advertisements');
+    }
+
+    return response.json();
+  }
+
+  async uploadClientAdvertisements(files) {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('logos', file);
+    });
+
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload advertisements');
+    }
+
+    return data;
+  }
+
+  async deleteClientAdvertisement(adId) {
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements/${adId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete advertisement');
+    }
+
+    return data;
+  }
+
   // Helper to get full image URL
   getImageUrl(imagePath) {
     if (!imagePath) return '';

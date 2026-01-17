@@ -157,9 +157,36 @@ const Dashboard = ({ user, onLogout }) => {
   const [showModal, setShowModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
   const [expandedSession, setExpandedSession] = useState(null);
+  const [clientAdvertisements, setClientAdvertisements] = useState([]);
 
   useEffect(() => {
     loadUploads();
+    loadClientAdvertisements();
+  }, []);
+
+  const loadClientAdvertisements = async () => {
+    try {
+      const ads = await api.getClientAdvertisements();
+      setClientAdvertisements(ads);
+    } catch (error) {
+      console.error('Failed to load client advertisements:', error);
+    }
+  };
+
+  let scrollTimeout;
+  const handleScroll = () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      loadUploads();
+    }, 500);
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
   }, []);
 
   // Group uploads by session
@@ -682,6 +709,30 @@ const Dashboard = ({ user, onLogout }) => {
           )}
         </div>
       </main>
+
+      {/* Our Clients Section */}
+      {clientAdvertisements.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Our Clients</h2>
+            <p className="text-gray-600">Trusted by leading companies</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            {clientAdvertisements.map((ad) => (
+              <div
+                key={ad._id}
+                className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all flex items-center justify-center"
+              >
+                <img
+                  src={api.getImageUrl(ad.image_url)}
+                  alt="Client Logo"
+                  className="max-w-full max-h-24 object-contain"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <SuccessModal
         isOpen={showModal}
