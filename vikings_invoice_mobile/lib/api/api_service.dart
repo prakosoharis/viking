@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 import '../models/user.dart';
 import '../models/upload.dart';
+import '../models/client_advertisement.dart';
 
 class ApiService {
   String get baseUrl => AppConstants.apiBaseUrl;
@@ -145,6 +146,30 @@ class ApiService {
         return data.map((json) => Upload.fromJson(json)).toList();
       } else {
         throw Exception('Failed to fetch uploads');
+      }
+    } on TimeoutException {
+      throw Exception('Connection timeout. Please try again.');
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network.');
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<List<ClientAdvertisement>> getClientAdvertisements() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/client-advertisements'), headers: headers)
+          .timeout(timeout);
+
+      print('Client Ads Response Status: ${response.statusCode}');
+      print('Client Ads Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => ClientAdvertisement.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to fetch client advertisements');
       }
     } on TimeoutException {
       throw Exception('Connection timeout. Please try again.');

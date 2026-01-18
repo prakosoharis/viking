@@ -569,10 +569,10 @@ const LoginScreen = ({ onLogin }) => {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
           <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <VikingHelm className="w-16 h-16" color="#9333ea" />
+            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vikings Admin</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ Admin</h1>
             <p className="text-gray-600">Manage all invoice uploads</p>
           </div>
 
@@ -618,12 +618,6 @@ const LoginScreen = ({ onLogin }) => {
               Login
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Default: <span className="font-mono font-semibold text-gray-700">admin / admin</span>
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -985,8 +979,8 @@ const Dashboard = ({ onLogout }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>

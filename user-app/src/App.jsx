@@ -108,10 +108,10 @@ const LoginScreen = ({ onLogin }) => {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
           <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <VikingHelm className="w-16 h-16" color="#2563eb" />
+            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <img src="/logo.png" alt="Company Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vikings Invoice</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ</h1>
             <p className="text-gray-600">Enter your phone number to continue</p>
           </div>
 
@@ -354,8 +354,8 @@ const Dashboard = ({ user, onLogout }) => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Upload className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Invoice Upload</h1>

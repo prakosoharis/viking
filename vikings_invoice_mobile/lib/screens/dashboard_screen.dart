@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_service.dart';
 import '../models/user.dart';
 import '../models/upload.dart';
+import '../models/client_advertisement.dart';
 import '../utils/helpers.dart';
 import '../constants/app_constants.dart';
 
@@ -27,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _apiService = ApiService();
   final _imagePicker = ImagePicker();
   List<Upload> _uploads = [];
+  List<ClientAdvertisement> _clientAdvertisements = [];
   List<Map<String, dynamic>> _selectedFiles = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -37,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadUploads();
+    _loadClientAdvertisements();
   }
 
   @override
@@ -72,6 +75,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadClientAdvertisements() async {
+    try {
+      final ads = await _apiService.getClientAdvertisements();
+      print('📢 Loaded ${ads.length} client advertisements');
+      if (mounted) {
+        setState(() {
+          _clientAdvertisements = ads;
+        });
+      }
+    } catch (e) {
+      print('❌ Failed to load client advertisements: $e');
     }
   }
 
@@ -323,6 +340,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _buildUploadSection(),
                               const SizedBox(height: 24),
                               _buildUploadHistorySection(),
+                              if (_clientAdvertisements.isNotEmpty) ...[
+                                const SizedBox(height: 24),
+                                _buildOurClientsSection(),
+                              ],
                             ],
                           ),
                         ),
@@ -345,10 +366,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.blue.shade100,
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.upload_file, color: Colors.blue, size: 24),
+            child: Image.asset('assets/logo.png', fit: BoxFit.contain),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1356,6 +1377,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOurClientsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Our Clients',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Trusted by leading companies',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: _clientAdvertisements.length,
+            itemBuilder: (context, index) {
+              final ad = _clientAdvertisements[index];
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.grey.shade200,
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    _apiService.getImageUrl(ad.imageUrl),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 32,
+                          color: Colors.grey.shade400,
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

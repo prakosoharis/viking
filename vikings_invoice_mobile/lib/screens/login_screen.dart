@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../widgets/viking_helm_icon.dart';
 import '../api/api_service.dart';
 import '../models/user.dart';
 
@@ -91,19 +90,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 96,
                         height: 96,
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Center(
-                          child: VikingHelmIcon(
-                            size: 64.0,
-                            color: Color(0xFF2563EB),
-                          ),
-                        ),
+                        child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                       ),
                       const SizedBox(height: 24),
                       const Text(
-                        'Vikings Invoice',
+                        'CLICKZ',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
