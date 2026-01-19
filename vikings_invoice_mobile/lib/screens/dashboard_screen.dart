@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../api/api_service.dart';
 import '../models/user.dart';
 import '../models/upload.dart';
@@ -1427,42 +1428,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
             itemCount: _clientAdvertisements.length,
             itemBuilder: (context, index) {
               final ad = _clientAdvertisements[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.grey.shade200,
-                    width: 1,
+              return GestureDetector(
+                onTap: ad.url != null && ad.url!.isNotEmpty
+                    ? () async {
+                        final Uri url = Uri(
+                          scheme: 'https',
+                          host: ad.url!.startsWith('http')
+                              ? ad.url!.replaceFirst(RegExp(r'^https?://'), '')
+                              : ad.url!,
+                        );
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: ad.url != null && ad.url!.isNotEmpty
+                          ? Colors.blue.shade300
+                          : Colors.grey.shade200,
+                      width: ad.url != null && ad.url!.isNotEmpty ? 2 : 1,
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _apiService.getImageUrl(ad.imageUrl),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          size: 32,
-                          color: Colors.grey.shade400,
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            _apiService.getImageUrl(ad.imageUrl),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(
+                                  Icons.broken_image,
+                                  size: 32,
+                                  color: Colors.grey.shade400,
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  strokeWidth: 2,
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                          strokeWidth: 2,
+                      ),
+                      if (ad.name != null && ad.name!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          ad.name!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      );
-                    },
+                      ],
+                      if (ad.url != null && ad.url!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.link,
+                              size: 10,
+                              color: Colors.blue.shade600,
+                            ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                ad.url!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.blue.shade600,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               );

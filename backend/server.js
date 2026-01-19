@@ -92,6 +92,8 @@ const Upload = mongoose.model('Upload', uploadSchema);
 // Client Advertisement Schema
 const clientAdvertisementSchema = new mongoose.Schema({
   image_url: { type: String, required: true },
+  name: { type: String },
+  url: { type: String },
   uploaded_at: { type: Date, default: Date.now }
 });
 
@@ -634,10 +636,23 @@ app.post('/api/admin/client-advertisements', (req, res, next) => {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    const uploadPromises = req.files.map(file => {
+    // Parse metadata from request body
+    let advertisementsData = [];
+    try {
+      advertisementsData = JSON.parse(req.body.advertisements || '[]');
+    } catch (e) {
+      console.error('Error parsing advertisements metadata:', e);
+      advertisementsData = [];
+    }
+
+    const uploadPromises = req.files.map((file, index) => {
       const imageUrl = `/assets/client-advertisements/${file.filename}`;
+      const adData = advertisementsData[index] || {};
+
       return new ClientAdvertisement({
-        image_url: imageUrl
+        image_url: imageUrl,
+        name: adData.name || null,
+        url: adData.url || null
       }).save();
     });
 

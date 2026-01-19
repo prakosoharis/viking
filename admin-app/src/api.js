@@ -86,10 +86,20 @@ class ApiService {
     return response.json();
   }
 
-  async uploadClientAdvertisements(files) {
+  async uploadClientAdvertisements(advertisements) {
     const formData = new FormData();
-    files.forEach(file => {
-      formData.append('logos', file);
+
+    // Add advertisements metadata as JSON string
+    formData.append('advertisements', JSON.stringify(
+      advertisements.map(ad => ({
+        name: ad.name || null,
+        url: ad.url || null
+      }))
+    ));
+
+    // Add files
+    advertisements.forEach(ad => {
+      formData.append('logos', ad.file);
     });
 
     const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`, {

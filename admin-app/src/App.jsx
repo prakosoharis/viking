@@ -646,7 +646,7 @@ const Dashboard = ({ onLogout }) => {
 
   // Client Advertisement state
   const [clientAdvertisements, setClientAdvertisements] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedAdvertisements, setSelectedAdvertisements] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [deleteConfirmAd, setDeleteConfirmAd] = useState(null);
 
@@ -710,21 +710,39 @@ const Dashboard = ({ onLogout }) => {
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    setSelectedFiles(files);
+
+    // Initialize advertisements with default values
+    const newAdvertisements = files.map(file => ({
+      file,
+      name: '',
+      url: ''
+    }));
+
+    setSelectedAdvertisements(prev => [...prev, ...newAdvertisements]);
+  };
+
+  const handleRemoveAdvertisement = (index) => {
+    setSelectedAdvertisements(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAdvertisementChange = (index, field, value) => {
+    setSelectedAdvertisements(prev => prev.map((ad, i) =>
+      i === index ? { ...ad, [field]: value } : ad
+    ));
   };
 
   const handleUploadAds = async () => {
-    if (selectedFiles.length === 0) {
+    if (selectedAdvertisements.length === 0) {
       alert('Please select at least one image');
       return;
     }
 
     setIsUploading(true);
     try {
-      await api.uploadClientAdvertisements(selectedFiles);
-      setSuccessMessage(`${selectedFiles.length} advertisement(s) uploaded successfully!`);
+      await api.uploadClientAdvertisements(selectedAdvertisements);
+      setSuccessMessage(`${selectedAdvertisements.length} advertisement(s) uploaded successfully!`);
       setShowSuccess(true);
-      setSelectedFiles([]);
+      setSelectedAdvertisements([]);
       loadClientAdvertisements();
     } catch (error) {
       alert(error.message || 'Failed to upload advertisements');
@@ -1173,30 +1191,74 @@ const Dashboard = ({ onLogout }) => {
                     className="hidden"
                   />
                 </label>
-                {selectedFiles.length > 0 && (
+                {selectedAdvertisements.length > 0 && (
                   <button
                     onClick={handleUploadAds}
                     disabled={isUploading}
                     className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-semibold shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-5 h-5" />
-                    {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`}
+                    {isUploading ? 'Uploading...' : `Upload ${selectedAdvertisements.length} Image${selectedAdvertisements.length > 1 ? 's' : ''}`}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Selected Files Preview */}
-            {selectedFiles.length > 0 && (
-              <div className="mb-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-xl">
-                <p className="font-semibold text-purple-900 mb-2">
-                  {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected:
+            {/* Selected Advertisements with Form */}
+            {selectedAdvertisements.length > 0 && (
+              <div className="mb-6 p-6 bg-purple-50 border-2 border-purple-200 rounded-xl">
+                <p className="font-semibold text-purple-900 mb-4">
+                  {selectedAdvertisements.length} file{selectedAdvertisements.length > 1 ? 's' : ''} selected - Please fill in details:
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedFiles.map((file, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-white rounded-lg text-sm text-gray-700 border border-purple-200">
-                      {file.name}
-                    </span>
+                <div className="space-y-4">
+                  {selectedAdvertisements.map((ad, idx) => (
+                    <div key={idx} className="p-4 bg-white rounded-xl border border-purple-200">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* File Name */}
+                          <div className="sm:col-span-2">
+                            <p className="text-sm font-semibold text-gray-700 truncate">{ad.file.name}</p>
+                          </div>
+
+                          {/* Name Input */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Advertisement Name
+                            </label>
+                            <input
+                              type="text"
+                              value={ad.name}
+                              onChange={(e) => handleAdvertisementChange(idx, 'name', e.target.value)}
+                              placeholder="e.g., Apple"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                            />
+                          </div>
+
+                          {/* URL Input */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Advertisement URL
+                            </label>
+                            <input
+                              type="text"
+                              value={ad.url}
+                              onChange={(e) => handleAdvertisementChange(idx, 'url', e.target.value)}
+                              placeholder="e.g., www.apple.com"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Remove Button */}
+                        <button
+                          onClick={() => handleRemoveAdvertisement(idx)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1236,17 +1298,45 @@ const Dashboard = ({ onLogout }) => {
                       </button>
                     </div>
 
-                    {/* Image */}
-                    <div className="aspect-square overflow-hidden bg-gray-200">
-                      <img
-                        src={api.getImageUrl(ad.image_url)}
-                        alt="Advertisement"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
+                    {/* Image - Clickable if URL exists */}
+                    {ad.url ? (
+                      <a
+                        href={ad.url.startsWith('http') ? ad.url : `https://${ad.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="aspect-square overflow-hidden bg-gray-200 block"
+                      >
+                        <img
+                          src={api.getImageUrl(ad.image_url)}
+                          alt={ad.name || 'Advertisement'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </a>
+                    ) : (
+                      <div className="aspect-square overflow-hidden bg-gray-200">
+                        <img
+                          src={api.getImageUrl(ad.image_url)}
+                          alt={ad.name || 'Advertisement'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </div>
+                    )}
 
-                    {/* Upload Date */}
+                    {/* Name, URL, and Upload Date */}
                     <div className="p-3">
+                      {/* Name */}
+                      {ad.name && (
+                        <p className="font-semibold text-sm text-gray-900 mb-1 truncate">
+                          {ad.name}
+                        </p>
+                      )}
+                      {/* URL */}
+                      {ad.url && (
+                        <p className="text-xs text-blue-600 mb-1 truncate" title={ad.url}>
+                          {ad.url}
+                        </p>
+                      )}
+                      {/* Upload Date */}
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <Calendar className="w-3 h-3" />
                         {new Date(ad.uploaded_at).toLocaleDateString()}
