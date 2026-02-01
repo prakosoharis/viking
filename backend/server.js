@@ -717,6 +717,349 @@ app.delete('/api/admin/client-advertisements/:id', async (req, res) => {
   }
 });
 
+// ==================== PUBLIC POLICY PAGES (for Google Play Store) ====================
+
+const getBaseHTML = (title, content) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} - CLICKZ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+      color: white;
+      padding: 40px 20px;
+      text-align: center;
+      border-radius: 0 0 20px 20px;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    .content {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: #1e3a8a;
+      font-size: 1.8rem;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    h2:first-child {
+      margin-top: 0;
+    }
+    h3 {
+      color: #1e40af;
+      font-size: 1.3rem;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin-bottom: 15px;
+      color: #4b5563;
+    }
+    ul, ol {
+      margin: 15px 0;
+      padding-left: 30px;
+    }
+    li {
+      margin-bottom: 8px;
+      color: #4b5563;
+    }
+    strong {
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+    .footer a {
+      color: #2563eb;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .contact-info {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .contact-info p {
+      margin: 5px 0;
+    }
+    @media (max-width: 768px) {
+      .header h1 { font-size: 2rem; }
+      .content { padding: 25px; }
+      h2 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${title}</h1>
+    <p>CLICKZ - Invoice Management Solution</p>
+  </div>
+  <div class="container">
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} CLICKZ. All rights reserved.</p>
+      <p style="margin-top: 15px;">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+        <a href="/about">About Us</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+// Privacy Policy Page
+app.get('/privacy', (req, res) => {
+  const content = `
+    <h2>1. Information We Collect</h2>
+    <p>CLICKZ collects the following types of information:</p>
+    <ul>
+      <li><strong>Personal Information:</strong> Phone number, company name, email address, organization number, and address that you provide.</li>
+      <li><strong>Uploaded Content:</strong> Invoice images and PDF documents that you upload through our service.</li>
+      <li><strong>Usage Data:</strong> App usage information, timestamps, and session data for service improvement.</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>We use your information to:</p>
+    <ul>
+      <li>Provide and maintain our invoice upload service</li>
+      <li>Process and store your uploaded invoices</li>
+      <li>Send invoices to designated recipients via email</li>
+      <li>Communicate with you about your account and service updates</li>
+      <li>Improve our services and develop new features</li>
+      <li>Comply with legal obligations</li>
+    </ul>
+
+    <h2>3. Data Storage and Security</h2>
+    <p>We implement appropriate security measures to protect your information:</p>
+    <ul>
+      <li>All uploaded files are encrypted during transmission and storage</li>
+      <li>We use secure servers and industry-standard security protocols</li>
+      <li>Access to your data is restricted to authorized personnel only</li>
+      <li>Your data is stored in secure data centers with controlled access</li>
+    </ul>
+
+    <h2>4. Data Sharing and Disclosure</h2>
+    <p>We do not sell your personal information. We may share your data only in the following circumstances:</p>
+    <ul>
+      <li><strong>Service Providers:</strong> With trusted third parties who assist in operating our service</li>
+      <li><strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
+      <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
+      <li><strong>With Your Consent:</strong> When you explicitly consent to sharing</li>
+    </ul>
+
+    <h2>5. Your Rights</h2>
+    <p>You have the following rights regarding your data:</p>
+    <ul>
+      <li><strong>Access:</strong> Request a copy of your personal data</li>
+      <li><strong>Correction:</strong> Update or correct inaccurate information</li>
+      <li><strong>Deletion:</strong> Request deletion of your personal data</li>
+      <li><strong>Objection:</strong> Object to processing of your personal data</li>
+      <li><strong>Data Portability:</strong> Receive your data in a structured format</li>
+    </ul>
+    <p>To exercise these rights, please contact us using the information below.</p>
+
+    <h2>6. Data Retention</h2>
+    <p>We retain your personal data for as long as necessary to provide our services and fulfill the purposes outlined in this policy. Uploaded invoices are retained according to your account settings and applicable legal requirements.</p>
+
+    <h2>7. Children's Privacy</h2>
+    <p>Our service is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.</p>
+
+    <h2>8. International Data Transfers</h2>
+    <p>Your information may be transferred to and processed in countries other than your country of residence. We ensure that appropriate safeguards are in place to protect your data in accordance with this Privacy Policy.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last Updated" date.</p>
+    <p><strong>Last Updated:</strong> February 2025</p>
+
+    <h2>10. Contact Us</h2>
+    <p>If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
+    <div class="contact-info">
+      <p><strong>Email:</strong> admin@clickz.co.no</p>
+      <p><strong>Website:</strong> www.clickz.co.no</p>
+    </div>
+  `;
+
+  res.send(getBaseHTML('Privacy Policy', content));
+});
+
+// Terms of Service Page
+app.get('/terms', (req, res) => {
+  const content = `
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using the CLICKZ invoice upload service ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Service.</p>
+
+    <h2>2. Description of Service</h2>
+    <p>CLICKZ is an invoice upload service that allows registered users to upload invoice images and PDF documents for processing and delivery to designated recipients via email.</p>
+
+    <h2>3. User Responsibilities</h2>
+    <p>As a user of CLICKZ, you agree to:</p>
+    <ul>
+      <li>Provide accurate and complete information when creating your account</li>
+      <li>Only upload invoices that you have the right to share</li>
+      <li>Ensure that uploaded content does not violate any laws or third-party rights</li>
+      <li>Maintain the confidentiality of your account credentials</li>
+      <li>Notify us immediately of any unauthorized use of your account</li>
+      <li>Not use the service for any illegal or unauthorized purpose</li>
+    </ul>
+
+    <h2>4. Acceptable Use Policy</h2>
+    <p>You agree NOT to:</p>
+    <ul>
+      <li>Upload malicious, harmful, or illegal content</li>
+      <li>Impersonate any person or entity</li>
+      <li>Interfere with or disrupt the Service or servers</li>
+      <li>Attempt to gain unauthorized access to any portion of the Service</li>
+      <li>Use the Service to transmit spam or unsolicited communications</li>
+      <li>Upload content that infringes on intellectual property rights</li>
+    </ul>
+
+    <h2>5. Uploaded Content</h2>
+    <p>Regarding content you upload:</p>
+    <ul>
+      <li>You retain ownership of the content you upload</li>
+      <li>You grant us a license to process, store, and transmit your uploaded content for the purpose of providing the Service</li>
+      <li>You are responsible for ensuring you have all necessary rights to upload the content</li>
+      <li>We may remove content that violates these Terms or applicable laws</li>
+    </ul>
+
+    <h2>6. Intellectual Property</h2>
+    <p>The Service and its original content, features, and functionality are owned by CLICKZ and are protected by international copyright, trademark, and other intellectual property laws. You may not:</p>
+    <ul>
+      <li>Copy, modify, or distribute the Service</li>
+      <li>Use any trademarks, logos, or service marks without our prior written consent</li>
+      <li>Reverse engineer or attempt to extract source code from the Service</li>
+    </ul>
+
+    <h2>7. Termination</h2>
+    <p>We may suspend or terminate your account and access to the Service at our sole discretion, without prior notice, for conduct that we believe:</p>
+    <ul>
+      <li>Violates these Terms</li>
+      <li>Is harmful to other users, us, or third parties</li>
+      <li>Violates applicable law</li>
+    </ul>
+    <p>Upon termination, your right to use the Service will immediately cease.</p>
+
+    <h2>8. Disclaimers</h2>
+    <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO:</p>
+    <ul>
+      <li>MERCHANTABILITY</li>
+      <li>FITNESS FOR A PARTICULAR PURPOSE</li>
+      <li>NON-INFRINGEMENT</li>
+      <li>ACCURACY OR RELIABILITY OF INFORMATION</li>
+    </ul>
+
+    <h2>9. Limitation of Liability</h2>
+    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, CLICKZ SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR USE, ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICE.</p>
+
+    <h2>10. Indemnification</h2>
+    <p>You agree to indemnify and hold harmless CLICKZ from any claims, damages, losses, liabilities, and expenses arising from:</p>
+    <ul>
+      <li>Your use of the Service</li>
+      <li>Your violation of these Terms</li>
+      <li>Your violation of any third-party rights</li>
+    </ul>
+
+    <h2>11. Governing Law</h2>
+    <p>These Terms shall be governed by and construed in accordance with the laws of Norway, without regard to its conflict of law provisions.</p>
+
+    <h2>12. Changes to Terms</h2>
+    <p>We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the updated Terms on this page. Your continued use of the Service after such modifications constitutes acceptance of the updated Terms.</p>
+
+    <h2>13. Contact Information</h2>
+    <p>For questions about these Terms, please contact:</p>
+    <div class="contact-info">
+      <p><strong>Email:</strong> admin@clickz.co.no</p>
+      <p><strong>Website:</strong> www.clickz.co.no</p>
+    </div>
+  `;
+
+  res.send(getBaseHTML('Terms of Service', content));
+});
+
+// About Us Page
+app.get('/about', (req, res) => {
+  const content = `
+    <h2>About CLICKZ</h2>
+    <p>CLICKZ is a modern invoice management solution designed to streamline how businesses handle their invoice documentation and delivery. Our platform simplifies the process of uploading, managing, and sharing invoices with clients and partners.</p>
+
+    <h2>Our Mission</h2>
+    <p>To provide businesses with an efficient, secure, and user-friendly platform for invoice management that saves time, reduces errors, and improves cash flow.</p>
+
+    <h2>What We Do</h2>
+    <p>CLICKZ offers a comprehensive invoice upload solution that includes:</p>
+    <ul>
+      <li><strong>Easy Upload:</strong> Capture and upload invoices via camera or file selection</li>
+      <li><strong>Multiple Formats:</strong> Support for images (JPG, PNG, HEIC, WebP) and PDF documents</li>
+      <li><strong>Secure Storage:</strong> Bank-level encryption for all uploaded documents</li>
+      <li><strong>Email Delivery:</strong> Automatic delivery of invoices to designated recipients</li>
+      <li><strong>Upload History:</strong> Track and manage all your uploads in one place</li>
+      <li><strong>Session Management:</strong> Organize uploads into sessions for better tracking</li>
+    </ul>
+
+    <h2>Why Choose CLICKZ?</h2>
+    <p>We understand the challenges businesses face with invoice management. That's why we built CLICKZ with focus on:</p>
+    <ul>
+      <li><strong>Simplicity:</strong> Intuitive interface that anyone can use</li>
+      <li><strong>Security:</strong> Your data is protected with enterprise-grade security</li>
+      <li><strong>Reliability:</strong> 99.9% uptime guarantee for business continuity</li>
+      <li><strong>Speed:</strong> Fast uploads and processing</li>
+      <li><strong>Support:</strong> Dedicated customer support team</li>
+    </ul>
+
+    <h2>Our Commitment</h2>
+    <p>We are committed to continuously improving our platform based on user feedback and evolving business needs. Your success is our priority, and we work hard to ensure CLICKZ meets and exceeds your expectations.</p>
+
+    <h2>Contact Us</h2>
+    <p>We'd love to hear from you! Reach out to us:</p>
+    <div class="contact-info">
+      <p><strong>Email:</strong> admin@clickz.co.no</p>
+      <p><strong>Website:</strong> www.clickz.co.no</p>
+    </div>
+  `;
+
+  res.send(getBaseHTML('About Us', content));
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);

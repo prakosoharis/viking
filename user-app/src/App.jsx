@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock, FileText } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock, FileText, Info, ExternalLink } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -58,6 +58,392 @@ const VikingHelm = ({ className = "w-16 h-16", color = "currentColor" }) => (
   </svg>
 );
 
+// Info Modal Component - For displaying About, Privacy Policy, Terms
+const InfoModal = ({ isOpen, onClose, title, content }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-scale flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-white hover:bg-white/20 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="overflow-y-auto p-6 prose prose-sm max-w-none">
+          {content}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Privacy Policy Content
+const PrivacyPolicyContent = () => (
+  <div className="space-y-6 text-gray-700">
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">1. Information We Collect</h3>
+      <p className="mb-2">CLICKZ collects the following types of information:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li><strong>Personal Information:</strong> Phone number, company name, email address, organization number, and address that you provide.</li>
+        <li><strong>Uploaded Content:</strong> Invoice images and PDF documents that you upload through our service.</li>
+        <li><strong>Usage Data:</strong> App usage information, timestamps, and session data for service improvement.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">2. How We Use Your Information</h3>
+      <p className="mb-2">We use your information to:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Provide and maintain our invoice upload service</li>
+        <li>Process and store your uploaded invoices</li>
+        <li>Send invoices to designated recipients via email</li>
+        <li>Communicate with you about your account and service updates</li>
+        <li>Improve our services and develop new features</li>
+        <li>Comply with legal obligations</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">3. Data Storage and Security</h3>
+      <p className="mb-2">We implement appropriate security measures to protect your information:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>All uploaded files are encrypted during transmission and storage</li>
+        <li>We use secure servers and industry-standard security protocols</li>
+        <li>Access to your data is restricted to authorized personnel only</li>
+        <li>Your data is stored in secure data centers with controlled access</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">4. Data Sharing and Disclosure</h3>
+      <p className="mb-2">We do not sell your personal information. We may share your data only in the following circumstances:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li><strong>Service Providers:</strong> With trusted third parties who assist in operating our service</li>
+        <li><strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
+        <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
+        <li><strong>With Your Consent:</strong> When you explicitly consent to sharing</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">5. Your Rights</h3>
+      <p className="mb-2">You have the following rights regarding your data:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li><strong>Access:</strong> Request a copy of your personal data</li>
+        <li><strong>Correction:</strong> Update or correct inaccurate information</li>
+        <li><strong>Deletion:</strong> Request deletion of your personal data</li>
+        <li><strong>Objection:</strong> Object to processing of your personal data</li>
+        <li><strong>Data Portability:</strong> Receive your data in a structured format</li>
+      </ul>
+      <p className="mt-2">To exercise these rights, please contact us using the information below.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">6. Data Retention</h3>
+      <p>We retain your personal data for as long as necessary to provide our services and fulfill the purposes outlined in this policy. Uploaded invoices are retained according to your account settings and applicable legal requirements.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">7. Children's Privacy</h3>
+      <p>Our service is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">8. International Data Transfers</h3>
+      <p>Your information may be transferred to and processed in countries other than your country of residence. We ensure that appropriate safeguards are in place to protect your data in accordance with this Privacy Policy.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">9. Changes to This Policy</h3>
+      <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last Updated" date.</p>
+      <p className="mt-2"><strong>Last Updated:</strong> February 2025</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">10. Contact Us</h3>
+      <p className="mb-2">If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
+      <ul className="list-none pl-0 space-y-1">
+        <li><strong>Email:</strong> admin@clickz.co.no</li>
+        <li><strong>Website:</strong> www.clickz.co.no</li>
+      </ul>
+    </section>
+  </div>
+);
+
+// Terms of Service Content
+const TermsOfServiceContent = () => (
+  <div className="space-y-6 text-gray-700">
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">1. Acceptance of Terms</h3>
+      <p>By accessing or using the CLICKZ invoice upload service ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Service.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">2. Description of Service</h3>
+      <p>CLICKZ is an invoice upload service that allows registered users to upload invoice images and PDF documents for processing and delivery to designated recipients via email.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">3. User Responsibilities</h3>
+      <p className="mb-2">As a user of CLICKZ, you agree to:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Provide accurate and complete information when creating your account</li>
+        <li>Only upload invoices that you have the right to share</li>
+        <li>Ensure that uploaded content does not violate any laws or third-party rights</li>
+        <li>Maintain the confidentiality of your account credentials</li>
+        <li>Notify us immediately of any unauthorized use of your account</li>
+        <li>Not use the service for any illegal or unauthorized purpose</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">4. Acceptable Use Policy</h3>
+      <p className="mb-2">You agree NOT to:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Upload malicious, harmful, or illegal content</li>
+        <li>Impersonate any person or entity</li>
+        <li>Interfere with or disrupt the Service or servers</li>
+        <li>Attempt to gain unauthorized access to any portion of the Service</li>
+        <li>Use the Service to transmit spam or unsolicited communications</li>
+        <li>Upload content that infringes on intellectual property rights</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">5. Uploaded Content</h3>
+      <p className="mb-2">Regarding content you upload:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>You retain ownership of the content you upload</li>
+        <li>You grant us a license to process, store, and transmit your uploaded content for the purpose of providing the Service</li>
+        <li>You are responsible for ensuring you have all necessary rights to upload the content</li>
+        <li>We may remove content that violates these Terms or applicable laws</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">6. Intellectual Property</h3>
+      <p className="mb-2">The Service and its original content, features, and functionality are owned by CLICKZ and are protected by international copyright, trademark, and other intellectual property laws. You may not:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Copy, modify, or distribute the Service</li>
+        <li>Use any trademarks, logos, or service marks without our prior written consent</li>
+        <li>Reverse engineer or attempt to extract source code from the Service</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">7. Termination</h3>
+      <p className="mb-2">We may suspend or terminate your account and access to the Service at our sole discretion, without prior notice, for conduct that we believe:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Violates these Terms</li>
+        <li>Is harmful to other users, us, or third parties</li>
+        <li>Violates applicable law</li>
+      </ul>
+      <p className="mt-2">Upon termination, your right to use the Service will immediately cease.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">8. Disclaimers</h3>
+      <p className="mb-2">THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>MERCHANTABILITY</li>
+        <li>FITNESS FOR A PARTICULAR PURPOSE</li>
+        <li>NON-INFRINGEMENT</li>
+        <li>ACCURACY OR RELIABILITY OF INFORMATION</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">9. Limitation of Liability</h3>
+      <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, CLICKZ SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR USE, ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICE.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">10. Indemnification</h3>
+      <p>You agree to indemnify and hold harmless CLICKZ from any claims, damages, losses, liabilities, and expenses arising from:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Your use of the Service</li>
+        <li>Your violation of these Terms</li>
+        <li>Your violation of any third-party rights</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">11. Governing Law</h3>
+      <p>These Terms shall be governed by and construed in accordance with the laws of Norway, without regard to its conflict of law provisions.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">12. Changes to Terms</h3>
+      <p>We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the updated Terms on this page. Your continued use of the Service after such modifications constitutes acceptance of the updated Terms.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">13. Contact Information</h3>
+      <p className="mb-2">For questions about these Terms, please contact:</p>
+      <ul className="list-none pl-0 space-y-1">
+        <li><strong>Email:</strong> admin@clickz.co.no</li>
+        <li><strong>Website:</strong> www.clickz.co.no</li>
+      </ul>
+    </section>
+  </div>
+);
+
+// About Us Content
+const AboutUsContent = () => (
+  <div className="space-y-6 text-gray-700">
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">About CLICKZ</h3>
+      <p>CLICKZ is a modern invoice management solution designed to streamline how businesses handle their invoice documentation and delivery. Our platform simplifies the process of uploading, managing, and sharing invoices with clients and partners.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">Our Mission</h3>
+      <p>To provide businesses with an efficient, secure, and user-friendly platform for invoice management that saves time, reduces errors, and improves cash flow.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">What We Do</h3>
+      <p className="mb-2">CLICKZ offers a comprehensive invoice upload solution that includes:</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li><strong>Easy Upload:</strong> Capture and upload invoices via camera or file selection</li>
+    <li><strong>Multiple Formats:</strong> Support for images (JPG, PNG, HEIC, WebP) and PDF documents</li>
+    <li><strong>Secure Storage:</strong> Bank-level encryption for all uploaded documents</li>
+    <li><strong>Email Delivery:</strong> Automatic delivery of invoices to designated recipients</li>
+    <li><strong>Upload History:</strong> Track and manage all your uploads in one place</li>
+    <li><strong>Session Management:</strong> Organize uploads into sessions for better tracking</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">Why Choose CLICKZ?</h3>
+      <p className="mb-2">We understand the challenges businesses face with invoice management. That's why we built CLICKZ with focus on:</p>
+      <ul className="list-disc pl-6 space-y-1">
+    <li><strong>Simplicity:</strong> Intuitive interface that anyone can use</li>
+    <li><strong>Security:</strong> Your data is protected with enterprise-grade security</li>
+    <li><strong>Reliability:</strong> 99.9% uptime guarantee for business continuity</li>
+    <li><strong>Speed:</strong> Fast uploads and processing</li>
+    <li><strong>Support:</strong> Dedicated customer support team</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">Our Commitment</h3>
+      <p>We are committed to continuously improving our platform based on user feedback and evolving business needs. Your success is our priority, and we work hard to ensure CLICKZ meets and exceeds your expectations.</p>
+    </section>
+
+    <section>
+      <h3 className="text-lg font-bold text-gray-900 mb-2">Contact Us</h3>
+      <p className="mb-2">We'd love to hear from you! Reach out to us:</p>
+      <ul className="list-none pl-0 space-y-1">
+        <li><strong>Email:</strong> admin@clickz.co.no</li>
+        <li><strong>Website:</strong> www.clickz.co.no</li>
+      </ul>
+    </section>
+  </div>
+);
+
+// Footer Component
+const Footer = ({ onOpenModal }) => (
+  <footer className="bg-gray-900 text-white mt-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Company Info */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xl font-bold">CLICKZ</span>
+          </div>
+          <p className="text-gray-400 text-sm">
+            Simplifying invoice management for modern businesses.
+          </p>
+        </div>
+
+        {/* Quick Links */}
+        <div>
+          <h4 className="font-semibold mb-4">Information</h4>
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => onOpenModal('about')}
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+                About Us
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onOpenModal('privacy')}
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+                Privacy Policy
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onOpenModal('terms')}
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+                Terms of Service
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        {/* Contact */}
+        <div>
+          <h4 className="font-semibold mb-4">Contact</h4>
+          <ul className="space-y-2 text-sm text-gray-400">
+            <li>
+              <a href="mailto:admin@clickz.co.no" className="hover:text-white transition-colors">
+                admin@clickz.co.no
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.clickz.co.no"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors flex items-center gap-1"
+              >
+                www.clickz.co.no
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Copyright */}
+      <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+        <p>&copy; {new Date().getFullYear()} CLICKZ. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+);
+
 // Success Modal Component
 const SuccessModal = ({ isOpen, onClose, count }) => {
   useEffect(() => {
@@ -95,6 +481,7 @@ const SuccessModal = ({ isOpen, onClose, count }) => {
 // Login Screen Component
 const LoginScreen = ({ onLogin }) => {
   const [phone, setPhone] = useState('');
+  const [modalType, setModalType] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -103,45 +490,73 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
+  const getModalContent = (type) => {
+    switch (type) {
+      case 'about':
+        return { title: 'About Us', content: <AboutUsContent /> };
+      case 'privacy':
+        return { title: 'Privacy Policy', content: <PrivacyPolicyContent /> };
+      case 'terms':
+        return { title: 'Terms of Service', content: <TermsOfServiceContent /> };
+      default:
+        return null;
+    }
+  };
+
+  const modalData = getModalContent(modalType);
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
-              <img src="/logo.png" alt="Company Logo" className="w-full h-full object-contain" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ</h1>
-            <p className="text-gray-600">Enter your phone number to continue</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+62 812 3456 7890"
-                  className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-lg"
-                  required
-                />
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                <img src="/logo.png" alt="Company Logo" className="w-full h-full object-contain" />
               </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ</h1>
+              <p className="text-gray-600">Enter your phone number to continue</p>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-lg shadow-lg shadow-blue-200 hover:shadow-xl"
-            >
-              Continue
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+62 812 3456 7890"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-lg"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-lg shadow-lg shadow-blue-200 hover:shadow-xl"
+              >
+                Continue
+              </button>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer onOpenModal={setModalType} />
+
+      {/* Info Modal */}
+      <InfoModal
+        isOpen={modalType !== null}
+        onClose={() => setModalType(null)}
+        title={modalData?.title || ''}
+        content={modalData?.content}
+      />
     </div>
   );
 };
@@ -158,6 +573,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [uploadCount, setUploadCount] = useState(0);
   const [expandedSession, setExpandedSession] = useState(null);
   const [clientAdvertisements, setClientAdvertisements] = useState([]);
+  const [modalType, setModalType] = useState(null);
 
   useEffect(() => {
     loadUploads();
@@ -347,8 +763,23 @@ const Dashboard = ({ user, onLogout }) => {
     });
   };
 
+  const getModalContent = (type) => {
+    switch (type) {
+      case 'about':
+        return { title: 'About Us', content: <AboutUsContent /> };
+      case 'privacy':
+        return { title: 'Privacy Policy', content: <PrivacyPolicyContent /> };
+      case 'terms':
+        return { title: 'Terms of Service', content: <TermsOfServiceContent /> };
+      default:
+        return null;
+    }
+  };
+
+  const modalData = getModalContent(modalType);
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
@@ -373,7 +804,7 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* User Profile Section */}
         {(user.company_name || user.company_email || user.address) && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-xl p-6 sm:p-8 mb-8 animate-slide-up border-2 border-blue-100">
@@ -778,6 +1209,17 @@ const Dashboard = ({ user, onLogout }) => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         count={uploadCount}
+      />
+
+      {/* Footer */}
+      <Footer onOpenModal={setModalType} />
+
+      {/* Info Modal */}
+      <InfoModal
+        isOpen={modalType !== null}
+        onClose={() => setModalType(null)}
+        title={modalData?.title || ''}
+        content={modalData?.content}
       />
     </div>
   );
