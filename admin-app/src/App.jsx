@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check, UserPlus, Edit2, Trash2, Search, Mail, AlertCircle, CheckCircle, Send, Clock } from 'lucide-react';
+import { Shield, LogOut, Phone, Calendar, ChevronDown, ChevronUp, User, Image as ImageIcon, ZoomIn, ZoomOut, X, RotateCw, Maximize2, Download, Check, UserPlus, Edit2, Trash2, Search, Mail, AlertCircle, CheckCircle, Send, Clock, Upload, Plus } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import api from './api';
@@ -651,10 +651,10 @@ const LoginScreen = ({ onLogin }) => {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
           <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <VikingHelm className="w-16 h-16" color="#9333ea" />
+            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vikings Admin</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ Admin</h1>
             <p className="text-gray-600">Manage all invoice uploads</p>
           </div>
 
@@ -700,12 +700,6 @@ const LoginScreen = ({ onLogin }) => {
               Login
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Default: <span className="font-mono font-semibold text-gray-700">admin / admin</span>
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -738,6 +732,12 @@ const Dashboard = ({ onLogout }) => {
   const [showDeleteImageDialog, setShowDeleteImageDialog] = useState(false);
   const [deletingImage, setDeletingImage] = useState(null);
 
+  // Client Advertisement state
+  const [clientAdvertisements, setClientAdvertisements] = useState([]);
+  const [selectedAdvertisements, setSelectedAdvertisements] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [deleteConfirmAd, setDeleteConfirmAd] = useState(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -745,8 +745,26 @@ const Dashboard = ({ onLogout }) => {
   useEffect(() => {
     if (activeTab === 'users') {
       loadAllUsers();
+    } else if (activeTab === 'ads') {
+      loadClientAdvertisements();
     }
   }, [activeTab, searchQuery]);
+
+  let scrollTimeout;
+  const handleScroll = () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      loadData();
+    }, 500);
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   const loadData = async () => {
     try {
@@ -765,6 +783,73 @@ const Dashboard = ({ onLogout }) => {
     } catch (error) {
       console.error('Failed to load users:', error);
       alert('Failed to load users. Please try again.');
+    }
+  };
+
+  const loadClientAdvertisements = async () => {
+    try {
+      const ads = await api.getClientAdvertisements();
+      setClientAdvertisements(ads);
+    } catch (error) {
+      console.error('Failed to load client advertisements:', error);
+      alert('Failed to load advertisements. Please try again.');
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+
+    // Initialize advertisements with default values
+    const newAdvertisements = files.map(file => ({
+      file,
+      name: '',
+      url: ''
+    }));
+
+    setSelectedAdvertisements(prev => [...prev, ...newAdvertisements]);
+  };
+
+  const handleRemoveAdvertisement = (index) => {
+    setSelectedAdvertisements(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAdvertisementChange = (index, field, value) => {
+    setSelectedAdvertisements(prev => prev.map((ad, i) =>
+      i === index ? { ...ad, [field]: value } : ad
+    ));
+  };
+
+  const handleUploadAds = async () => {
+    if (selectedAdvertisements.length === 0) {
+      alert('Please select at least one image');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await api.uploadClientAdvertisements(selectedAdvertisements);
+      setSuccessMessage(`${selectedAdvertisements.length} advertisement(s) uploaded successfully!`);
+      setShowSuccess(true);
+      setSelectedAdvertisements([]);
+      loadClientAdvertisements();
+    } catch (error) {
+      alert(error.message || 'Failed to upload advertisements');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteAd = async () => {
+    if (!deleteConfirmAd) return;
+
+    try {
+      await api.deleteClientAdvertisement(deleteConfirmAd._id);
+      setSuccessMessage('Advertisement deleted successfully!');
+      setShowSuccess(true);
+      setDeleteConfirmAd(null);
+      loadClientAdvertisements();
+    } catch (error) {
+      alert(error.message || 'Failed to delete advertisement');
     }
   };
 
@@ -1026,8 +1111,8 @@ const Dashboard = ({ onLogout }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -1065,6 +1150,15 @@ const Dashboard = ({ onLogout }) => {
               }`}
           >
             User Management
+          </button>
+          <button
+            onClick={() => setActiveTab('ads')}
+            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all ${activeTab === 'ads'
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
+          >
+            Client Advertisement
           </button>
         </div>
       </div>
@@ -1181,6 +1275,189 @@ const Dashboard = ({ onLogout }) => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Client Advertisement Panel */}
+      {activeTab === 'ads' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-slide-up">
+            {/* Header with Upload Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Client Advertisements</h2>
+                <p className="text-gray-600 mt-1">
+                  {clientAdvertisements.length} {clientAdvertisements.length === 1 ? 'advertisement' : 'advertisements'}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <label className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold shadow-lg flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-5 h-5" />
+                  <span>Select Images</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                {selectedAdvertisements.length > 0 && (
+                  <button
+                    onClick={handleUploadAds}
+                    disabled={isUploading}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-semibold shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-5 h-5" />
+                    {isUploading ? 'Uploading...' : `Upload ${selectedAdvertisements.length} Image${selectedAdvertisements.length > 1 ? 's' : ''}`}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Advertisements with Form */}
+            {selectedAdvertisements.length > 0 && (
+              <div className="mb-6 p-6 bg-purple-50 border-2 border-purple-200 rounded-xl">
+                <p className="font-semibold text-purple-900 mb-4">
+                  {selectedAdvertisements.length} file{selectedAdvertisements.length > 1 ? 's' : ''} selected - Please fill in details:
+                </p>
+                <div className="space-y-4">
+                  {selectedAdvertisements.map((ad, idx) => (
+                    <div key={idx} className="p-4 bg-white rounded-xl border border-purple-200">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* File Name */}
+                          <div className="sm:col-span-2">
+                            <p className="text-sm font-semibold text-gray-700 truncate">{ad.file.name}</p>
+                          </div>
+
+                          {/* Name Input */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Advertisement Name
+                            </label>
+                            <input
+                              type="text"
+                              value={ad.name}
+                              onChange={(e) => handleAdvertisementChange(idx, 'name', e.target.value)}
+                              placeholder="e.g., Apple"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                            />
+                          </div>
+
+                          {/* URL Input */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Advertisement URL
+                            </label>
+                            <input
+                              type="text"
+                              value={ad.url}
+                              onChange={(e) => handleAdvertisementChange(idx, 'url', e.target.value)}
+                              placeholder="e.g., www.apple.com"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Remove Button */}
+                        <button
+                          onClick={() => handleRemoveAdvertisement(idx)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Advertisements Grid */}
+            {clientAdvertisements.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <ImageIcon className="w-10 h-10 text-gray-400" />
+                </div>
+                <p className="text-gray-600 text-lg">No advertisements yet</p>
+                <p className="text-gray-500 text-sm mt-2">Click "Select Images" to upload client logos</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {clientAdvertisements.map((ad) => (
+                  <div
+                    key={ad._id}
+                    className="group relative bg-gray-50 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all"
+                  >
+                    {/* Preview & Delete Button */}
+                    <div className="absolute top-2 right-2 z-10 flex gap-1">
+                      <button
+                        onClick={() => setPreviewImage(api.getImageUrl(ad.image_url))}
+                        className="w-8 h-8 bg-white/80 rounded-lg flex items-center justify-center hover:bg-white transition-all"
+                        title="Preview"
+                      >
+                        <ZoomIn className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmAd(ad)}
+                        className="w-8 h-8 bg-red-500/80 rounded-lg flex items-center justify-center hover:bg-red-600 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+
+                    {/* Image - Clickable if URL exists */}
+                    {ad.url ? (
+                      <a
+                        href={ad.url.startsWith('http') ? ad.url : `https://${ad.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="aspect-square overflow-hidden bg-gray-200 block"
+                      >
+                        <img
+                          src={api.getImageUrl(ad.image_url)}
+                          alt={ad.name || 'Advertisement'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </a>
+                    ) : (
+                      <div className="aspect-square overflow-hidden bg-gray-200">
+                        <img
+                          src={api.getImageUrl(ad.image_url)}
+                          alt={ad.name || 'Advertisement'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </div>
+                    )}
+
+                    {/* Name, URL, and Upload Date */}
+                    <div className="p-3">
+                      {/* Name */}
+                      {ad.name && (
+                        <p className="font-semibold text-sm text-gray-900 mb-1 truncate">
+                          {ad.name}
+                        </p>
+                      )}
+                      {/* URL */}
+                      {ad.url && (
+                        <p className="text-xs text-blue-600 mb-1 truncate" title={ad.url}>
+                          {ad.url}
+                        </p>
+                      )}
+                      {/* Upload Date */}
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(ad.uploaded_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1583,6 +1860,14 @@ const Dashboard = ({ onLogout }) => {
         }}
         onConfirm={handleDeleteImage}
         imageUrl={deletingImage?.imageUrl}
+      />
+
+      {/* Delete Advertisement Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={!!deleteConfirmAd}
+        onClose={() => setDeleteConfirmAd(null)}
+        onConfirm={handleDeleteAd}
+        userName="this advertisement"
       />
 
       <SuccessToast

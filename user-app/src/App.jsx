@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock, FileText } from 'lucide-react';
+import { Upload, LogOut, CheckCircle, Image as ImageIcon, Phone, Calendar, Camera, X, User, Mail, Building2, MapPin, Hash, ChevronDown, Send, AlertCircle, Clock, FileText, ExternalLink } from 'lucide-react';
 import api from './api';
 
 // Storage key for current user session (still use localStorage for session)
@@ -58,6 +58,96 @@ const VikingHelm = ({ className = "w-16 h-16", color = "currentColor" }) => (
   </svg>
 );
 
+// Footer Component
+const Footer = () => (
+  <footer className="bg-gray-900 text-white mt-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Company Info */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xl font-bold">CLICKZ</span>
+          </div>
+          <p className="text-gray-400 text-sm">
+            Simplifying invoice management for modern businesses.
+          </p>
+        </div>
+
+        {/* Quick Links */}
+        <div>
+          <h4 className="font-semibold mb-4">Information</h4>
+          <ul className="space-y-2">
+            <li>
+              <a
+                href="/about"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                About Us
+              </a>
+            </li>
+            <li>
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Privacy Policy
+              </a>
+            </li>
+            <li>
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Terms of Service
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {/* Contact */}
+        <div>
+          <h4 className="font-semibold mb-4">Contact</h4>
+          <ul className="space-y-2 text-sm text-gray-400">
+            <li>
+              <a href="mailto:admin@clickz.co.no" className="hover:text-white transition-colors">
+                admin@clickz.co.no
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.clickz.co.no"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors flex items-center gap-1"
+              >
+                www.clickz.co.no
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Copyright */}
+      <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+        <p>&copy; {new Date().getFullYear()} CLICKZ. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+);
+
 // Success Modal Component
 const SuccessModal = ({ isOpen, onClose, count }) => {
   useEffect(() => {
@@ -104,44 +194,49 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
-          <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <VikingHelm className="w-16 h-16" color="#2563eb" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vikings Invoice</h1>
-            <p className="text-gray-600">Enter your phone number to continue</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+62 812 3456 7890"
-                  className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-lg"
-                  required
-                />
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 animate-slide-up">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                <img src="/logo.png" alt="Company Logo" className="w-full h-full object-contain" />
               </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">CLICKZ</h1>
+              <p className="text-gray-600">Enter your phone number to continue</p>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-lg shadow-lg shadow-blue-200 hover:shadow-xl"
-            >
-              Continue
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+62 812 3456 7890"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-lg"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-lg shadow-lg shadow-blue-200 hover:shadow-xl"
+              >
+                Continue
+              </button>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
@@ -157,9 +252,36 @@ const Dashboard = ({ user, onLogout }) => {
   const [showModal, setShowModal] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
   const [expandedSession, setExpandedSession] = useState(null);
+  const [clientAdvertisements, setClientAdvertisements] = useState([]);
 
   useEffect(() => {
     loadUploads();
+    loadClientAdvertisements();
+  }, []);
+
+  const loadClientAdvertisements = async () => {
+    try {
+      const ads = await api.getClientAdvertisements();
+      setClientAdvertisements(ads);
+    } catch (error) {
+      console.error('Failed to load client advertisements:', error);
+    }
+  };
+
+  let scrollTimeout;
+  const handleScroll = () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      loadUploads();
+    }, 500);
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
   }, []);
 
   // Group uploads by session
@@ -321,14 +443,14 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Upload className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img src="/logo.png" alt="CLICKZ Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Invoice Upload</h1>
@@ -346,7 +468,7 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* User Profile Section */}
         {(user.company_name || user.company_email || user.address) && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-xl p-6 sm:p-8 mb-8 animate-slide-up border-2 border-blue-100">
@@ -683,11 +805,78 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </main>
 
+      {/* Our Clients Section */}
+      {clientAdvertisements.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Our Clients</h2>
+            <p className="text-gray-600">Trusted by leading companies</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            {clientAdvertisements.map((ad) => (
+              <div
+                key={ad._id}
+                className={`bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all flex flex-col items-center justify-center ${
+                  ad.url ? 'cursor-pointer hover:scale-105' : ''
+                }`}
+              >
+                {/* Image - Clickable if URL exists */}
+                {ad.url ? (
+                  <a
+                    href={ad.url.startsWith('http') ? ad.url : `https://${ad.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center"
+                  >
+                    <img
+                      src={api.getImageUrl(ad.image_url)}
+                      alt={ad.name || 'Client Logo'}
+                      className="max-w-full max-h-24 object-contain"
+                    />
+                  </a>
+                ) : (
+                  <img
+                    src={api.getImageUrl(ad.image_url)}
+                    alt={ad.name || 'Client Logo'}
+                    className="max-w-full max-h-24 object-contain"
+                  />
+                )}
+
+                {/* Name */}
+                {ad.name && (
+                  <p className="mt-3 text-sm font-semibold text-gray-900 text-center truncate w-full">
+                    {ad.name}
+                  </p>
+                )}
+
+                {/* URL */}
+                {ad.url && (
+                  <a
+                    href={ad.url.startsWith('http') ? ad.url : `https://${ad.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 text-xs text-blue-600 hover:text-blue-800 text-center truncate w-full flex items-center justify-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span className="truncate">{ad.url}</span>
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <SuccessModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         count={uploadCount}
       />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

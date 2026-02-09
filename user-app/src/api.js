@@ -126,6 +126,16 @@ class ApiService {
     return response.json();
   }
 
+  async getClientAdvertisements() {
+    const response = await fetch(`${API_BASE_URL}/client-advertisements`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch client advertisements');
+    }
+
+    return response.json();
+  }
+
   // Helper to get full image URL
   getImageUrl(imagePath) {
     if (!imagePath) return '';

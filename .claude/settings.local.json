@@ -11,7 +11,19 @@
       "Bash(npm start)",
       "Bash(taskkill:*)",
       "Bash(node:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(chmod:*)",
+      "Bash(./create_playstore_assets.sh:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter build:*)",
+      "Bash(jarsigner -verify:*)",
+      "Bash(npm run dev:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(pm2 start:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

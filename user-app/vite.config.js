@@ -1,9 +1,50 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
+import path from 'path'
+
+// Custom plugin untuk serve static pages
+function staticPagesPlugin() {
+  return {
+    name: 'static-pages',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/about' || req.url === '/about/') {
+          const filePath = path.resolve(__dirname, 'public/about.html')
+          if (fs.existsSync(filePath)) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8')
+            const html = fs.readFileSync(filePath, 'utf-8')
+            res.end(html)
+            return
+          }
+        }
+        if (req.url === '/privacy' || req.url === '/privacy/') {
+          const filePath = path.resolve(__dirname, 'public/privacy.html')
+          if (fs.existsSync(filePath)) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8')
+            const html = fs.readFileSync(filePath, 'utf-8')
+            res.end(html)
+            return
+          }
+        }
+        if (req.url === '/terms' || req.url === '/terms/') {
+          const filePath = path.resolve(__dirname, 'public/terms.html')
+          if (fs.existsSync(filePath)) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8')
+            const html = fs.readFileSync(filePath, 'utf-8')
+            res.end(html)
+            return
+          }
+        }
+        next()
+      })
+    }
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), staticPagesPlugin()],
 
   // Development server (npm run dev)
   server: {
