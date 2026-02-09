@@ -77,7 +77,7 @@ class ApiService {
 
   // Delete session
   async deleteSession(userId, sessionNumber) {
-    const response = await fetch(`${API_BASE_URL}/admin/session/${userId}/${sessionNumber}`, {
+    const response = await fetch(`${API_BASE_URL}/uploads/session/${userId}/${sessionNumber}`, {
       method: 'DELETE',
     });
 
@@ -92,7 +92,7 @@ class ApiService {
 
   // Delete single upload/image
   async deleteUpload(uploadId) {
-    const response = await fetch(`${API_BASE_URL}/admin/upload/${uploadId}`, {
+    const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}`, {
       method: 'DELETE',
     });
 
@@ -107,7 +107,7 @@ class ApiService {
 
   // Client Advertisement endpoints
   async getClientAdvertisements() {
-    const response = await fetch(`${API_BASE_URL}/admin/advertisements`);
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`);
 
     if (!response.ok) {
       throw new Error('Failed to fetch advertisements');
@@ -125,7 +125,7 @@ class ApiService {
       formData.append(`urls`, ad.url || '');
     });
 
-    const response = await fetch(`${API_BASE_URL}/admin/advertisements`, {
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`, {
       method: 'POST',
       body: formData,
     });
@@ -140,7 +140,7 @@ class ApiService {
   }
 
   async deleteClientAdvertisement(adId) {
-    const response = await fetch(`${API_BASE_URL}/admin/advertisements/${adId}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements/${adId}`, {
       method: 'DELETE',
     });
 
