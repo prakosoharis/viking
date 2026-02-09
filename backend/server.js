@@ -405,6 +405,73 @@ app.get('/api/uploads', async (req, res) => {
   }
 });
 
+// DELETE /api/uploads/:id - Delete single upload
+app.delete('/api/uploads/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const upload = await Upload.findById(id);
+    if (!upload) {
+      return res.status(404).json({ error: 'Upload not found' });
+    }
+
+    // Delete physical file
+    const imagePath = upload.image_url;
+    if (imagePath && imagePath.startsWith('/assets/')) {
+      const filename = imagePath.replace('/assets/', '');
+      const filepath = path.join(uploadsDir, filename);
+
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+        console.log(`✅ File deleted: ${filename}`);
+      }
+    }
+
+    // Delete database record
+    await Upload.findByIdAndDelete(id);
+
+    res.json({ message: 'Upload deleted successfully' });
+  } catch (error) {
+    console.error('Delete upload error:', error);
+    res.status(500).json({ error: 'Server error deleting upload' });
+  }
+});
+
+// DELETE /api/uploads/session/:userId/:sessionNumber - Delete all uploads in a session
+app.delete('/api/uploads/session/:userId/:sessionNumber', async (req, res) => {
+  try {
+    const { userId, sessionNumber } = req.params;
+
+    const uploads = await Upload.find({ user_id: userId, session_number: parseInt(sessionNumber) });
+
+    if (uploads.length === 0) {
+      return res.status(404).json({ error: 'No uploads found for this session' });
+    }
+
+    // Delete all physical files
+    for (const upload of uploads) {
+      const imagePath = upload.image_url;
+      if (imagePath && imagePath.startsWith('/assets/')) {
+        const filename = imagePath.replace('/assets/', '');
+        const filepath = path.join(uploadsDir, filename);
+
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+          console.log(`✅ File deleted: ${filename}`);
+        }
+      }
+    }
+
+    // Delete all database records
+    await Upload.deleteMany({ user_id: userId, session_number: parseInt(sessionNumber) });
+
+    res.json({ message: `${uploads.length} uploads deleted successfully` });
+  } catch (error) {
+    console.error('Delete session error:', error);
+    res.status(500).json({ error: 'Server error deleting session' });
+  }
+});
+
 // ==================== ADMIN ROUTES ====================
 
 // Get users with upload counts

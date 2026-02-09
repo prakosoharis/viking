@@ -526,6 +526,88 @@ const DeleteConfirmDialog = ({ isOpen, onClose, onConfirm, userName }) => {
   );
 };
 
+// Delete Session Confirmation Dialog Component
+const DeleteSessionDialog = ({ isOpen, onClose, onConfirm, sessionNumber, uploadCount }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-scale">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Delete Session?</h2>
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete <span className="font-semibold">Session #{sessionNumber}</span>?
+            This will delete <span className="font-semibold">{uploadCount} file(s)</span> in this session. This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 px-6 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 py-3 px-6 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Delete Image Confirmation Dialog Component
+const DeleteImageDialog = ({ isOpen, onClose, onConfirm, imageUrl }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-scale">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Delete Image?</h2>
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete this image?
+            This action cannot be undone.
+          </p>
+          {/* Image Preview */}
+          {imageUrl && (
+            <div className="mb-6 flex justify-center">
+              <img
+                src={imageUrl}
+                alt="To be deleted"
+                className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+              />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 px-6 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 py-3 px-6 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Success Toast Notification Component
 const SuccessToast = ({ message, isOpen, onClose }) => {
   useEffect(() => {
@@ -650,6 +732,12 @@ const Dashboard = ({ onLogout }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Upload deletion state
+  const [showDeleteSessionDialog, setShowDeleteSessionDialog] = useState(false);
+  const [deletingSession, setDeletingSession] = useState(null);
+  const [showDeleteImageDialog, setShowDeleteImageDialog] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -713,6 +801,32 @@ const Dashboard = ({ onLogout }) => {
       setShowDeleteDialog(false);
       setDeletingUser(null);
       loadAllUsers();
+      loadData();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    try {
+      await api.deleteSession(deletingSession.userId, deletingSession.sessionNumber);
+      setSuccessMessage(`Session ${deletingSession.sessionNumber} deleted successfully!`);
+      setShowSuccess(true);
+      setShowDeleteSessionDialog(false);
+      setDeletingSession(null);
+      loadData();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    try {
+      await api.deleteUpload(deletingImage.uploadId);
+      setSuccessMessage('Image deleted successfully!');
+      setShowSuccess(true);
+      setShowDeleteImageDialog(false);
+      setDeletingImage(null);
       loadData();
     } catch (error) {
       alert(error.message);
@@ -1318,6 +1432,20 @@ const Dashboard = ({ onLogout }) => {
                                     <Download className="w-4 h-4" />
                                     Download
                                   </button>
+
+                                  {/* Delete Session Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeletingSession({ userId: user._id, sessionNumber: session.sessionNumber, uploadCount: session.uploads.length });
+                                      setShowDeleteSessionDialog(true);
+                                    }}
+                                    className="ml-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-2 text-sm font-semibold"
+                                    title="Delete Session"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                  </button>
                                 </div>
 
                                 {/* Session Content */}
@@ -1351,7 +1479,7 @@ const Dashboard = ({ onLogout }) => {
                                             </div>
 
                                             {/* Download Button */}
-                                            <div className="absolute top-2 right-2 z-10">
+                                            <div className="absolute top-2 right-2 z-10 flex gap-1">
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
@@ -1361,6 +1489,17 @@ const Dashboard = ({ onLogout }) => {
                                                 title="Download"
                                               >
                                                 <Download className="w-4 h-4 text-gray-600" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setDeletingImage({ uploadId: upload._id, imageUrl });
+                                                  setShowDeleteImageDialog(true);
+                                                }}
+                                                className="w-8 h-8 bg-red-100/80 rounded-lg flex items-center justify-center hover:bg-red-200 transition-all"
+                                                title="Delete"
+                                              >
+                                                <Trash2 className="w-4 h-4 text-red-600" />
                                               </button>
                                             </div>
 
@@ -1421,6 +1560,29 @@ const Dashboard = ({ onLogout }) => {
         }}
         onConfirm={handleDeleteUser}
         userName={deletingUser?.company_name || deletingUser?.phone_number || ''}
+      />
+
+      {/* Delete Session Confirmation Dialog */}
+      <DeleteSessionDialog
+        isOpen={showDeleteSessionDialog}
+        onClose={() => {
+          setShowDeleteSessionDialog(false);
+          setDeletingSession(null);
+        }}
+        onConfirm={handleDeleteSession}
+        sessionNumber={deletingSession?.sessionNumber}
+        uploadCount={deletingSession?.uploadCount}
+      />
+
+      {/* Delete Image Confirmation Dialog */}
+      <DeleteImageDialog
+        isOpen={showDeleteImageDialog}
+        onClose={() => {
+          setShowDeleteImageDialog(false);
+          setDeletingImage(null);
+        }}
+        onConfirm={handleDeleteImage}
+        imageUrl={deletingImage?.imageUrl}
       />
 
       <SuccessToast

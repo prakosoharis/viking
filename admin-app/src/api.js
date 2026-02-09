@@ -75,6 +75,36 @@ class ApiService {
     return data;
   }
 
+  // Delete single upload
+  async deleteUpload(uploadId) {
+    const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete upload');
+    }
+
+    return data;
+  }
+
+  // Delete all uploads in a session
+  async deleteSession(userId, sessionNumber) {
+    const response = await fetch(`${API_BASE_URL}/uploads/session/${userId}/${sessionNumber}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete session');
+    }
+
+    return data;
+  }
+
   // Helper to get full image URL
   getImageUrl(imagePath) {
     if (!imagePath) return '';
