@@ -75,6 +75,84 @@ class ApiService {
     return data;
   }
 
+  // Delete session
+  async deleteSession(userId, sessionNumber) {
+    const response = await fetch(`${API_BASE_URL}/admin/session/${userId}/${sessionNumber}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete session');
+    }
+
+    return data;
+  }
+
+  // Delete single upload/image
+  async deleteUpload(uploadId) {
+    const response = await fetch(`${API_BASE_URL}/admin/upload/${uploadId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete upload');
+    }
+
+    return data;
+  }
+
+  // Client Advertisement endpoints
+  async getClientAdvertisements() {
+    const response = await fetch(`${API_BASE_URL}/admin/advertisements`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch advertisements');
+    }
+
+    return response.json();
+  }
+
+  async uploadClientAdvertisements(advertisements) {
+    const formData = new FormData();
+
+    advertisements.forEach((ad, index) => {
+      formData.append(`images`, ad.file);
+      formData.append(`names`, ad.name || '');
+      formData.append(`urls`, ad.url || '');
+    });
+
+    const response = await fetch(`${API_BASE_URL}/admin/advertisements`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload advertisements');
+    }
+
+    return data;
+  }
+
+  async deleteClientAdvertisement(adId) {
+    const response = await fetch(`${API_BASE_URL}/admin/advertisements/${adId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete advertisement');
+    }
+
+    return data;
+  }
+
   // Helper to get full image URL
   getImageUrl(imagePath) {
     if (!imagePath) return '';
