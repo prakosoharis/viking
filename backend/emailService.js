@@ -172,11 +172,19 @@ async function sendInvoiceEmail(user, uploads, sessionNumber) {
       }
     }
 
-    // Parse multiple recipients (comma-separated)
-    const recipientEmails = process.env.EMAIL_TO
-      .split(',')
-      .map(email => email.trim())
-      .filter(email => email.length > 0);
+    // Send to the user's company_email (from User Management)
+    // Fallback to EMAIL_TO from .env if company_email is not set
+    let recipientEmails = [];
+
+    if (user.company_email && user.company_email.trim()) {
+      recipientEmails = [user.company_email.trim()];
+    } else {
+      // Fallback to EMAIL_TO from .env (comma-separated)
+      recipientEmails = process.env.EMAIL_TO
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+    }
 
     const recipients = recipientEmails.map(email => ({ email }));
 
@@ -195,8 +203,9 @@ async function sendInvoiceEmail(user, uploads, sessionNumber) {
     const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
 
     console.log(`✅ Email sent successfully!`);
+    console.log(`   User: ${user.company_name} (${user.phone_number})`);
     console.log(`   FROM: ${fromEmail}`);
-    console.log(`   TO: ${recipientEmails.join(', ')}`);
+    console.log(`   TO: ${recipientEmails.join(', ')} ${user.company_email ? '(from User Management)' : '(from .env EMAIL_TO)'}`);
     console.log(`   Session: #${sessionNumber}`);
     console.log(`   Files: ${uploads.length} (${attachments.length} attached)`);
     console.log(`   Email ID: ${result.messageId}`);
