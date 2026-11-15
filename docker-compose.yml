@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:7.0
@@ -23,6 +21,8 @@ services:
     restart: always
     ports:
       - "3202:3202"
+    env_file:
+      - ./backend/.env
     environment:
       NODE_ENV: production
       MONGODB_URI: mongodb://admin:admin123@mongodb:27017/invoice_db?authSource=admin
@@ -31,6 +31,34 @@ services:
       - mongodb
     volumes:
       - ./backend/uploads:/app/uploads
+    networks:
+      - vikings-network
+
+  user-app:
+    build:
+      context: ./user-app
+      args:
+        VITE_API_URL: http://localhost:3202/api
+    container_name: vikings-user-app
+    restart: always
+    ports:
+      - "3200:80"
+    depends_on:
+      - backend
+    networks:
+      - vikings-network
+
+  admin-app:
+    build:
+      context: ./admin-app
+      args:
+        VITE_API_URL: http://localhost:3202/api
+    container_name: vikings-admin-app
+    restart: always
+    ports:
+      - "3201:80"
+    depends_on:
+      - backend
     networks:
       - vikings-network
 
