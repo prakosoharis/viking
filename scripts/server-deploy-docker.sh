@@ -51,9 +51,8 @@ docker compose ps
 
 echo "==> 5/6 Pasang konfigurasi Nginx"
 cp nginx-clickz.conf "$NGINX_SITE"
-ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/clickz.conf
-# Nonaktifkan default site kalau masih aktif agar tidak bentrok
-rm -f /etc/nginx/sites-enabled/default
+ln -sfn "$NGINX_SITE" /etc/nginx/sites-enabled/clickz.conf
+# Catatan: server ini dipakai bersama project lain, jadi site lain tidak disentuh.
 nginx -t
 systemctl reload nginx
 
