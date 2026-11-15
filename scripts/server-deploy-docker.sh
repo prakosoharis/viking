@@ -4,7 +4,7 @@
 set -euo pipefail
 
 APP_DIR="/var/www/viking"
-REPO="git@github.com:prakosoharis/viking.git"
+REPO="https://github.com/prakosoharis/viking.git"
 API_URL="https://api.clickz.co.no/api"
 NGINX_SITE="/etc/nginx/sites-available/clickz.conf"
 
