@@ -4,14 +4,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import api from './api';
 
-// Storage key for admin session (still use localStorage for session)
-const STORAGE_KEY_ADMIN_SESSION = 'invoice_admin_session';
-
-// Admin credentials
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin'
-};
+// Credentials live in the backend .env; the token it issues is the session.
 
 // Viking Helm Logo Component
 const VikingHelm = ({ className = "w-16 h-16", color = "currentColor" }) => (
@@ -634,15 +627,20 @@ const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
 
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+    try {
+      await api.login(username, password);
       onLogin();
-      setError('');
-    } else {
-      setError('Invalid credentials. Try admin / admin');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -695,9 +693,10 @@ const LoginScreen = ({ onLogin }) => {
 
             <button
               type="submit"
-              className="w-full py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold text-lg shadow-lg shadow-purple-200 hover:shadow-xl"
+              disabled={isSubmitting}
+              className="w-full py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold text-lg shadow-lg shadow-purple-200 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Login
+              {isSubmitting ? 'Signing in...' : 'Login'}
             </button>
           </form>
         </div>
@@ -1887,24 +1886,23 @@ const Dashboard = ({ onLogout }) => {
 
 // Main App Component
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(api.getToken()));
 
   useEffect(() => {
-    // Check if admin is already logged in
-    const session = localStorage.getItem(STORAGE_KEY_ADMIN_SESSION);
-    if (session === 'true') {
-      setIsLoggedIn(true);
-    }
+    // The backend rejected our token (expired or revoked) - back to login
+    const handleUnauthorized = () => setIsLoggedIn(false);
+
+    window.addEventListener('admin-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('admin-unauthorized', handleUnauthorized);
   }, []);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
-    localStorage.setItem(STORAGE_KEY_ADMIN_SESSION, 'true');
   };
 
   const handleLogout = () => {
+    api.clearToken();
     setIsLoggedIn(false);
-    localStorage.removeItem(STORAGE_KEY_ADMIN_SESSION);
   };
 
   return (

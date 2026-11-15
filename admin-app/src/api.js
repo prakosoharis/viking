@@ -1,156 +1,158 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const TOKEN_KEY = 'invoice_admin_token';
 
 class ApiService {
-  // Admin endpoints
-  async getUsersWithUploads() {
-    const response = await fetch(`${API_BASE_URL}/admin/users-with-uploads`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch users');
-    }
-
-    return response.json();
+  // ---------- Auth ----------
+  getToken() {
+    return localStorage.getItem(TOKEN_KEY);
   }
 
-  // User management endpoints
-  async getAllUsers(searchQuery = '') {
-    const url = searchQuery
-      ? `${API_BASE_URL}/admin/users?search=${encodeURIComponent(searchQuery)}`
-      : `${API_BASE_URL}/admin/users`;
+  clearToken() {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 
-    const response = await fetch(url);
+  async login(username, password) {
+    const response = await fetch(`${API_BASE_URL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Failed to fetch users');
+      throw new Error(data.error || 'Login failed');
     }
-    return response.json();
+
+    localStorage.setItem(TOKEN_KEY, data.token);
+    return data;
+  }
+
+  // Every admin call goes through here so the token is always attached
+  // and an expired session logs the admin out instead of showing empty data.
+  async request(path, options = {}) {
+    const token = this.getToken();
+    const headers = { ...(options.headers || {}) };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+
+    if (response.status === 401) {
+      this.clearToken();
+      window.dispatchEvent(new Event('admin-unauthorized'));
+      throw new Error('Session expired. Please login again.');
+    }
+
+    return response;
+  }
+
+  async requestJson(path, options = {}, errorMessage = 'Request failed') {
+    const response = await this.request(path, options);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || errorMessage);
+    }
+
+    return data;
+  }
+
+  jsonBody(body) {
+    return {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    };
+  }
+
+  // ---------- Admin endpoints ----------
+  async getUsersWithUploads() {
+    return this.requestJson('/admin/users-with-uploads', {}, 'Failed to fetch users');
+  }
+
+  // ---------- User management ----------
+  async getAllUsers(searchQuery = '') {
+    const path = searchQuery
+      ? `/admin/users?search=${encodeURIComponent(searchQuery)}`
+      : '/admin/users';
+
+    return this.requestJson(path, {}, 'Failed to fetch users');
   }
 
   async createUser(userData) {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to create user');
-    }
-
-    return data;
+    return this.requestJson(
+      '/admin/users',
+      { method: 'POST', ...this.jsonBody(userData) },
+      'Failed to create user'
+    );
   }
 
   async updateUser(userId, userData) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to update user');
-    }
-
-    return data;
+    return this.requestJson(
+      `/admin/users/${userId}`,
+      { method: 'PUT', ...this.jsonBody(userData) },
+      'Failed to update user'
+    );
   }
 
   async deleteUser(userId) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-      method: 'DELETE',
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to delete user');
-    }
-
-    return data;
+    return this.requestJson(
+      `/admin/users/${userId}`,
+      { method: 'DELETE' },
+      'Failed to delete user'
+    );
   }
 
-  // Delete session
+  // ---------- Uploads ----------
   async deleteSession(userId, sessionNumber) {
-    const response = await fetch(`${API_BASE_URL}/uploads/session/${userId}/${sessionNumber}`, {
-      method: 'DELETE',
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to delete session');
-    }
-
-    return data;
+    return this.requestJson(
+      `/uploads/session/${userId}/${sessionNumber}`,
+      { method: 'DELETE' },
+      'Failed to delete session'
+    );
   }
 
-  // Delete single upload/image
   async deleteUpload(uploadId) {
-    const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}`, {
-      method: 'DELETE',
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to delete upload');
-    }
-
-    return data;
+    return this.requestJson(
+      `/uploads/${uploadId}`,
+      { method: 'DELETE' },
+      'Failed to delete upload'
+    );
   }
 
-  // Client Advertisement endpoints
+  // ---------- Client advertisements ----------
   async getClientAdvertisements() {
-    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch advertisements');
-    }
-
-    return response.json();
+    return this.requestJson('/admin/client-advertisements', {}, 'Failed to fetch advertisements');
   }
 
   async uploadClientAdvertisements(advertisements) {
     const formData = new FormData();
 
-    advertisements.forEach((ad, index) => {
-      formData.append(`images`, ad.file);
-      formData.append(`names`, ad.name || '');
-      formData.append(`urls`, ad.url || '');
-    });
+    // Backend expects the files under "logos" plus an "advertisements"
+    // JSON array holding each file's name and url, in the same order.
+    const metadata = advertisements.map((ad) => ({
+      name: ad.name || null,
+      url: ad.url || null,
+    }));
 
-    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements`, {
-      method: 'POST',
-      body: formData,
-    });
+    advertisements.forEach((ad) => formData.append('logos', ad.file));
+    formData.append('advertisements', JSON.stringify(metadata));
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to upload advertisements');
-    }
-
-    return data;
+    return this.requestJson(
+      '/admin/client-advertisements',
+      { method: 'POST', body: formData },
+      'Failed to upload advertisements'
+    );
   }
 
   async deleteClientAdvertisement(adId) {
-    const response = await fetch(`${API_BASE_URL}/admin/client-advertisements/${adId}`, {
-      method: 'DELETE',
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to delete advertisement');
-    }
-
-    return data;
+    return this.requestJson(
+      `/admin/client-advertisements/${adId}`,
+      { method: 'DELETE' },
+      'Failed to delete advertisement'
+    );
   }
 
   // Helper to get full image URL
@@ -163,20 +165,16 @@ class ApiService {
     }
 
     // Get base URL and replace /api with /assets
-    // Example: https://api.deluwang.online/api -> https://api.deluwang.online/assets
+    // Example: https://api.clickz.co.no/api -> https://api.clickz.co.no/assets
     const baseUrl = API_BASE_URL.replace(/\/api$/, '/assets');
 
     // Extract clean path from malformed URLs
     let cleanPath = imagePath;
 
-    // Handle malformed URLs like ".deluwang.online/api/assets/xxx.jpg" or "https/.deluwang.online/api/assets/xxx.jpg"
     if (cleanPath.includes('/assets/')) {
-      // Extract only /assets/filename part
       cleanPath = cleanPath.substring(cleanPath.indexOf('/assets/'));
-      // Remove /assets/ prefix since baseUrl already has it
       cleanPath = cleanPath.replace('/assets/', '/');
     } else if (!cleanPath.startsWith('/')) {
-      // If no /assets/ found and doesn't start with /, assume it's just filename
       cleanPath = '/' + cleanPath;
     }
 

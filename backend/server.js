@@ -4,6 +4,8 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // Email service
@@ -213,7 +215,94 @@ const validateUserData = (data) => {
   return errors;
 };
 
+// ==================== ADMIN AUTHENTICATION ====================
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const TOKEN_TTL_SECONDS = 12 * 60 * 60;
+
+if (!JWT_SECRET || !ADMIN_USERNAME || !ADMIN_PASSWORD) {
+  console.error('❌ JWT_SECRET, ADMIN_USERNAME and ADMIN_PASSWORD must be set in .env');
+  process.exit(1);
+}
+
+// Constant-time compare so a wrong password cannot be found by timing
+const safeEqual = (a, b) => {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+};
+
+// Throttle failed logins per IP
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 10;
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+const tooManyAttempts = (ip) => {
+  const entry = loginAttempts.get(ip);
+  if (!entry) return false;
+  if (Date.now() - entry.first > ATTEMPT_WINDOW_MS) {
+    loginAttempts.delete(ip);
+    return false;
+  }
+  return entry.count >= MAX_ATTEMPTS;
+};
+
+const recordFailure = (ip) => {
+  const entry = loginAttempts.get(ip);
+  if (!entry || Date.now() - entry.first > ATTEMPT_WINDOW_MS) {
+    loginAttempts.set(ip, { count: 1, first: Date.now() });
+  } else {
+    entry.count += 1;
+  }
+};
+
+const requireAdmin = (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    req.admin = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+};
+
 // ==================== ROUTES ====================
+
+// Admin login - issues a token used by every /api/admin route
+app.post('/api/admin/login', (req, res) => {
+  const ip = req.ip;
+  const { username, password } = req.body;
+
+  if (tooManyAttempts(ip)) {
+    return res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
+  }
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
+    recordFailure(ip);
+    console.warn(`⚠️ Failed admin login from ${ip}`);
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  loginAttempts.delete(ip);
+  const token = jwt.sign({ role: 'admin', username: ADMIN_USERNAME }, JWT_SECRET, {
+    expiresIn: TOKEN_TTL_SECONDS
+  });
+
+  res.json({ token, expires_in: TOKEN_TTL_SECONDS });
+});
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -247,7 +336,7 @@ app.post('/api/users/login', async (req, res) => {
 });
 
 // Get all users
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireAdmin, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' }).sort({ created_at: -1 });
     res.json(users);
@@ -446,7 +535,7 @@ app.get('/api/uploads/user/:userId', async (req, res) => {
 });
 
 // Get all uploads
-app.get('/api/uploads', async (req, res) => {
+app.get('/api/uploads', requireAdmin, async (req, res) => {
   try {
     const uploads = await Upload.find().sort({ uploaded_at: -1 });
     res.json(uploads);
@@ -457,7 +546,7 @@ app.get('/api/uploads', async (req, res) => {
 });
 
 // DELETE /api/uploads/:id - Delete single upload
-app.delete('/api/uploads/:id', async (req, res) => {
+app.delete('/api/uploads/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -489,7 +578,7 @@ app.delete('/api/uploads/:id', async (req, res) => {
 });
 
 // DELETE /api/uploads/session/:userId/:sessionNumber - Delete all uploads in a session
-app.delete('/api/uploads/session/:userId/:sessionNumber', async (req, res) => {
+app.delete('/api/uploads/session/:userId/:sessionNumber', requireAdmin, async (req, res) => {
   try {
     const { userId, sessionNumber } = req.params;
 
@@ -526,7 +615,7 @@ app.delete('/api/uploads/session/:userId/:sessionNumber', async (req, res) => {
 // ==================== ADMIN ROUTES ====================
 
 // Get users with upload counts
-app.get('/api/admin/users-with-uploads', async (req, res) => {
+app.get('/api/admin/users-with-uploads', requireAdmin, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' });
 
@@ -556,7 +645,7 @@ app.get('/api/admin/users-with-uploads', async (req, res) => {
 // ==================== ADMIN USER MANAGEMENT ROUTES ====================
 
 // GET /api/admin/users - Get all users with optional search
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const { search } = req.query;
 
@@ -580,7 +669,7 @@ app.get('/api/admin/users', async (req, res) => {
 });
 
 // POST /api/admin/users - Create new user (registration)
-app.post('/api/admin/users', async (req, res) => {
+app.post('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const { company_name, org_nr, address, zip_code, company_email, phone_number } = req.body;
 
@@ -618,7 +707,7 @@ app.post('/api/admin/users', async (req, res) => {
 });
 
 // PUT /api/admin/users/:id - Update user
-app.put('/api/admin/users/:id', async (req, res) => {
+app.put('/api/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { company_name, org_nr, address, zip_code, company_email, phone_number } = req.body;
@@ -661,7 +750,7 @@ app.put('/api/admin/users/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/users/:id - Delete user
-app.delete('/api/admin/users/:id', async (req, res) => {
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -686,7 +775,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 // ==================== ADMIN CLIENT ADVERTISEMENT ROUTES ====================
 
 // POST /api/admin/client-advertisements - Upload client advertisement logos
-app.post('/api/admin/client-advertisements', (req, res, next) => {
+app.post('/api/admin/client-advertisements', requireAdmin, (req, res, next) => {
   clientAdUpload.array('logos', 10)(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err.message);
@@ -737,7 +826,7 @@ app.post('/api/admin/client-advertisements', (req, res, next) => {
 });
 
 // GET /api/admin/client-advertisements - Get all client advertisements (for admin)
-app.get('/api/admin/client-advertisements', async (req, res) => {
+app.get('/api/admin/client-advertisements', requireAdmin, async (req, res) => {
   try {
     const advertisements = await ClientAdvertisement.find().sort({ uploaded_at: -1 });
     res.json(advertisements);
@@ -759,7 +848,7 @@ app.get('/api/client-advertisements', async (req, res) => {
 });
 
 // DELETE /api/admin/client-advertisements/:id - Delete a client advertisement
-app.delete('/api/admin/client-advertisements/:id', async (req, res) => {
+app.delete('/api/admin/client-advertisements/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
