@@ -38,7 +38,7 @@ services:
     build:
       context: ./user-app
       args:
-        VITE_API_URL: http://localhost:3202/api
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3202/api}
     container_name: vikings-user-app
     restart: always
     ports:
@@ -52,7 +52,7 @@ services:
     build:
       context: ./admin-app
       args:
-        VITE_API_URL: http://localhost:3202/api
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3202/api}
     container_name: vikings-admin-app
     restart: always
     ports:
