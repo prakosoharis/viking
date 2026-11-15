@@ -4,7 +4,7 @@ services:
     container_name: vikings-mongodb
     restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin123
@@ -20,7 +20,7 @@ services:
     container_name: vikings-backend
     restart: always
     ports:
-      - "3202:3202"
+      - "127.0.0.1:3202:3202"
     env_file:
       - ./backend/.env
     environment:
@@ -42,7 +42,7 @@ services:
     container_name: vikings-user-app
     restart: always
     ports:
-      - "3200:80"
+      - "127.0.0.1:3200:80"
     depends_on:
       - backend
     networks:
@@ -56,7 +56,7 @@ services:
     container_name: vikings-admin-app
     restart: always
     ports:
-      - "3201:80"
+      - "127.0.0.1:3201:80"
     depends_on:
       - backend
     networks:
