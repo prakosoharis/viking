@@ -1,6 +1,7 @@
 const brevo = require('@getbrevo/brevo');
 const path = require('path');
 const fs = require('fs');
+const { MAX_TOTAL_MB, MAX_TOTAL_BYTES, formatMB } = require('./uploadLimits');
 
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi();
@@ -137,39 +138,31 @@ async function sendInvoiceEmail(user, uploads, sessionNumber) {
     // Build email HTML
     const htmlContent = buildEmailTemplate(user, uploads, sessionNumber);
 
-    // Prepare attachments (max 5 files or 20MB total)
+    // Attach every file. The upload endpoints already enforce the file count and size limits,
+    // so a missing or oversized attachment fails the email instead of sending it incomplete.
     const attachments = [];
     let totalSize = 0;
-    const maxSize = 20 * 1024 * 1024; // 20MB
-    const maxFiles = 5;
 
-    if (uploads.length <= maxFiles) {
-      for (const upload of uploads) {
-        const filename = path.basename(upload.image_url);
-        const filepath = path.join(__dirname, 'uploads', filename);
+    for (const upload of uploads) {
+      const filename = path.basename(upload.image_url);
+      const filepath = path.join(__dirname, 'uploads', filename);
 
-        // Check if file exists
-        if (fs.existsSync(filepath)) {
-          const fileSize = fs.statSync(filepath).size;
-
-          // Check if adding this file would exceed limit
-          if (totalSize + fileSize > maxSize) {
-            console.log(`⚠️ Skipping ${filename} - would exceed 20MB limit`);
-            break;
-          }
-
-          // Read file as base64
-          const fileContent = fs.readFileSync(filepath);
-          const base64Content = fileContent.toString('base64');
-
-          attachments.push({
-            name: filename,
-            content: base64Content
-          });
-
-          totalSize += fileSize;
-        }
+      if (!fs.existsSync(filepath)) {
+        throw new Error(`Attachment not found: ${filename}`);
       }
+
+      // Read file as base64
+      const fileContent = fs.readFileSync(filepath);
+      totalSize += fileContent.length;
+
+      attachments.push({
+        name: filename,
+        content: fileContent.toString('base64')
+      });
+    }
+
+    if (totalSize > MAX_TOTAL_BYTES) {
+      throw new Error(`Attachments total ${formatMB(totalSize)} MB exceeds the ${MAX_TOTAL_MB} MB email limit`);
     }
 
     // Send to the user's company_email (from User Management)
@@ -216,13 +209,14 @@ async function sendInvoiceEmail(user, uploads, sessionNumber) {
     };
 
   } catch (error) {
-    console.error('❌ Email send failed:', error);
-
     // Extract error message
     let errorMessage = error.message;
     if (error.response && error.response.body) {
       errorMessage = JSON.stringify(error.response.body);
     }
+
+    // Log only the message: the full error object contains the request headers, including the Brevo API key
+    console.error('❌ Email send failed:', errorMessage);
 
     return {
       success: false,

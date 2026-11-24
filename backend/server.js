@@ -10,6 +10,7 @@ require('dotenv').config();
 
 // Email service
 const { sendInvoiceEmail } = require('./emailService');
+const { MAX_FILES, MAX_TOTAL_MB, MAX_TOTAL_BYTES, checkUploadLimits } = require('./uploadLimits');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -133,7 +134,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit (untuk HEIC/RAW images)
+  limits: { fileSize: MAX_TOTAL_BYTES } // a single file can never exceed the per-upload email limit
 });
 
 // Configure Multer for client advertisement uploads (separate storage)
@@ -348,13 +349,30 @@ app.get('/api/users', requireAdmin, async (req, res) => {
 
 // ==================== UPLOAD ROUTES ====================
 
+// Upload limits (used by the user app before uploading)
+app.get('/api/upload-limits', (req, res) => {
+  res.json({ maxFiles: MAX_FILES, maxTotalBytes: MAX_TOTAL_BYTES });
+});
+
+// Remove files multer already stored when an upload is rejected
+const removeUploadedFiles = (files = []) => {
+  files.forEach(file => fs.promises.unlink(file.path).catch(() => {}));
+};
+
 // Upload images
 app.post('/api/uploads', (req, res, next) => {
-  upload.array('images', 10)(req, res, (err) => {
+  upload.array('images', MAX_FILES)(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err.message);
-      return res.status(400).json({
-        error: err.message || 'File upload error',
+      // Multer removes partially stored files itself on error
+      let message = err.message || 'File upload error';
+      if (err.code === 'LIMIT_UNEXPECTED_FILE' || err.code === 'LIMIT_FILE_COUNT') {
+        message = `Maximum ${MAX_FILES} files per upload.`;
+      } else if (err.code === 'LIMIT_FILE_SIZE') {
+        message = `A file exceeds the ${MAX_TOTAL_MB} MB limit per upload.`;
+      }
+      return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+        error: message,
         code: err.code
       });
     }
@@ -365,11 +383,18 @@ app.post('/api/uploads', (req, res, next) => {
     const { user_id } = req.body;
 
     if (!user_id) {
+      removeUploadedFiles(req.files);
       return res.status(400).json({ error: 'User ID is required' });
     }
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const limitError = checkUploadLimits(req.files.map(file => file.size));
+    if (limitError) {
+      removeUploadedFiles(req.files);
+      return res.status(413).json({ error: limitError });
     }
 
     // Get last session number for this user
@@ -446,18 +471,30 @@ app.post('/api/uploads-base64', async (req, res) => {
       return res.status(400).json({ error: 'No files provided' });
     }
 
-    // Get last session number for this user
-    const lastUpload = await Upload.findOne({ user_id }).sort({ session_number: -1 });
-    const sessionNumber = lastUpload ? lastUpload.session_number + 1 : 1;
+    if (files.length > MAX_FILES) {
+      return res.status(400).json({ error: `Maximum ${MAX_FILES} files per upload.` });
+    }
 
-    const uploadPromises = files.map(async (fileData, idx) => {
+    // Decode everything first so the size limit is checked before anything is written
+    const decodedFiles = files.map((fileData, idx) => {
       // Extract base64 data (remove data:image/jpeg;base64, prefix)
       const matches = fileData.data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
         throw new Error(`Invalid base64 data for file ${idx}`);
       }
+      return { fileData, imageBuffer: Buffer.from(matches[2], 'base64') };
+    });
 
-      const imageBuffer = Buffer.from(matches[2], 'base64');
+    const limitError = checkUploadLimits(decodedFiles.map(({ imageBuffer }) => imageBuffer.length));
+    if (limitError) {
+      return res.status(413).json({ error: limitError });
+    }
+
+    // Get last session number for this user
+    const lastUpload = await Upload.findOne({ user_id }).sort({ session_number: -1 });
+    const sessionNumber = lastUpload ? lastUpload.session_number + 1 : 1;
+
+    const uploadPromises = decodedFiles.map(async ({ fileData, imageBuffer }) => {
       const ext = fileData.type.split('/')[1] || 'jpg';
       const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}.${ext}`;
       const filepath = path.join(uploadsDir, filename);
