@@ -242,10 +242,19 @@ const LoginScreen = ({ onLogin }) => {
 };
 
 // Main Dashboard Component
+// Fallback when the backend limits can't be loaded (same defaults as backend/uploadLimits.js)
+const DEFAULT_UPLOAD_LIMITS = { maxFiles: 5, maxTotalBytes: 14 * 1024 * 1024 };
+
+const formatMB = (bytes) => (bytes / 1024 / 1024).toFixed(1);
+
+const formatFileSize = (bytes) =>
+  bytes >= 1024 * 1024 ? `${formatMB(bytes)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
+
 const Dashboard = ({ user, onLogout }) => {
-  const MAX_FILES = 10;
   const MIN_FILES = 1;
 
+  const [uploadLimits, setUploadLimits] = useState(DEFAULT_UPLOAD_LIMITS);
+  const MAX_FILES = uploadLimits.maxFiles;
   const [uploads, setUploads] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -257,7 +266,23 @@ const Dashboard = ({ user, onLogout }) => {
   useEffect(() => {
     loadUploads();
     loadClientAdvertisements();
+    loadUploadLimits();
   }, []);
+
+  const loadUploadLimits = async () => {
+    try {
+      setUploadLimits(await api.getUploadLimits());
+    } catch (error) {
+      console.error('Failed to load upload limits, using defaults:', error);
+    }
+  };
+
+  const totalSelectedSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+  const exceedsSizeLimit = totalSelectedSize > uploadLimits.maxTotalBytes;
+  const exceedsFileLimit = selectedFiles.length > MAX_FILES;
+  const sizeLimitMessage =
+    `Total size ${formatMB(totalSelectedSize)} MB exceeds the ${formatMB(uploadLimits.maxTotalBytes)} MB limit per upload.\n` +
+    `Remove ${formatMB(totalSelectedSize - uploadLimits.maxTotalBytes)} MB of files or send them in a separate upload.`;
 
   const loadClientAdvertisements = async () => {
     try {
@@ -408,8 +433,13 @@ const Dashboard = ({ user, onLogout }) => {
       return;
     }
 
-    if (selectedFiles.length > MAX_FILES) {
+    if (exceedsFileLimit) {
       alert(`You can only upload a maximum of ${MAX_FILES} files at once.`);
+      return;
+    }
+
+    if (exceedsSizeLimit) {
+      alert(sizeLimitMessage);
       return;
     }
 
@@ -607,7 +637,7 @@ const Dashboard = ({ user, onLogout }) => {
               Take a photo or choose from gallery
             </p>
             <p className="text-sm text-blue-600 font-semibold mb-6">
-              Min: {MIN_FILES} file • Max: {MAX_FILES} files per upload
+              Min: {MIN_FILES} file • Max: {MAX_FILES} files or {formatMB(uploadLimits.maxTotalBytes)} MB per upload
             </p>
 
             <div className="flex gap-3 justify-center flex-wrap">
@@ -644,11 +674,19 @@ const Dashboard = ({ user, onLogout }) => {
                   <span className={`text-sm font-bold ${selectedFiles.length >= MAX_FILES ? 'text-red-600' : 'text-blue-600'}`}>
                     {selectedFiles.length} / {MAX_FILES}
                   </span>
-                  {selectedFiles.length >= MAX_FILES && (
+                  <span className={`text-sm font-bold ${exceedsSizeLimit ? 'text-red-600' : 'text-blue-600'}`}>
+                    {formatMB(totalSelectedSize)} / {formatMB(uploadLimits.maxTotalBytes)} MB
+                  </span>
+                  {selectedFiles.length >= MAX_FILES && !exceedsSizeLimit && (
                     <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">Max reached</span>
                   )}
                 </div>
               </div>
+              {exceedsSizeLimit && (
+                <p className="mb-4 text-sm text-red-700 bg-red-50 rounded-xl p-3 whitespace-pre-line">
+                  {sizeLimitMessage}
+                </p>
+              )}
               <div className="space-y-3 mb-6">
                 {Array.from(selectedFiles).map((file, idx) => {
                   const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -664,7 +702,7 @@ const Dashboard = ({ user, onLogout }) => {
                         {file.name}
                       </span>
                       <span className="text-sm text-gray-500">
-                        {(file.size / 1024).toFixed(1)} KB
+                        {formatFileSize(file.size)}
                       </span>
                       <button
                         onClick={() => removeFile(idx)}
@@ -686,7 +724,8 @@ const Dashboard = ({ user, onLogout }) => {
                 </button>
                 <button
                   onClick={handleUpload}
-                  className="flex-1 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-lg shadow-lg shadow-green-200"
+                  disabled={exceedsSizeLimit || exceedsFileLimit}
+                  className="flex-1 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-lg shadow-lg shadow-green-200 disabled:bg-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                   Upload {selectedFiles.length} {selectedFiles.length === 1 ? 'File' : 'Files'}
                 </button>

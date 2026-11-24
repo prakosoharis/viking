@@ -116,6 +116,16 @@ class ApiService {
     }
   }
 
+  async getUploadLimits() {
+    const response = await fetch(`${API_BASE_URL}/upload-limits`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch upload limits');
+    }
+
+    return response.json();
+  }
+
   async getUserUploads(userId) {
     const response = await fetch(`${API_BASE_URL}/uploads/user/${userId}`);
 
